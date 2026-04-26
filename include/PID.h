@@ -1,10 +1,13 @@
 #ifndef __PID_H
 #define __PID_H
 
+#include <stdint.h>
+
 typedef struct {
     float Kp;
     float Ki;
     float Kd;
+    uint32_t frequency; // Control loop frequency in Hz
 } PID_InitTypeDef;
 
 typedef enum {

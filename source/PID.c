@@ -3,24 +3,17 @@
 
 struct PID_HandleTypeDef {
     PID_InitTypeDef Init;
+    float KiDiscrete;
+    float KdDiscrete;
     float Integral;
     float PreviousError;
     PID_StateTypeDef State;
 };
 
-// static float PID_Clamp(float value, float min, float max) {
-//     if (value > max) {
-//         return max;
-//     }
-//     if (value < min) {
-//         return min;
-//     }
-//     return value;
-// }
 
 PID_HandleTypeDef* PID_Init(PID_InitTypeDef* init) {
     // Verify input parameter
-    if (init == NULL) {
+    if (init == NULL || init->frequency == 0U) {
         return NULL;
     }
 
@@ -31,6 +24,8 @@ PID_HandleTypeDef* PID_Init(PID_InitTypeDef* init) {
     }
 
     handle->Init = *init;
+    handle->KiDiscrete = init->Ki * (float)init->frequency;
+    handle->KdDiscrete = init->Kd / (float)init->frequency;
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
@@ -84,7 +79,7 @@ float PID_Compute(PID_HandleTypeDef* handle,
 	float error = setpoint - measurement;
     float derivative = error - handle->PreviousError;
 	handle->Integral += error;
-    float output = (handle->Init.Kp * error) + (handle->Init.Ki * handle->Integral) + (handle->Init.Kd * derivative);
+    float output = (handle->Init.Kp * error) + (handle->KiDiscrete * handle->Integral) + (handle->KdDiscrete * derivative);
 	handle->PreviousError = error;
     handle->State = PID_UnSaturated; 
 	return output;
@@ -101,7 +96,7 @@ float PID_ComputeConditional(PID_HandleTypeDef* handle,
     float error = setpoint - measurement;
 	float newIntegral = handle->Integral + error;
 	float derivative = error - handle->PreviousError;
-	float output = (handle->Init.Kp * error) + (handle->Init.Ki * newIntegral) + (handle->Init.Kd * derivative);
+	float output = (handle->Init.Kp * error) + (handle->KiDiscrete * newIntegral) + (handle->KdDiscrete * derivative);
 
     if (output > outputMax){
         output = outputMax; 
@@ -137,7 +132,7 @@ float PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
 
     float error = setpoint - measurement;
     float derivative = error - handle->PreviousError;
-    float rawOutput = (handle->Init.Kp * error) + (handle->Init.Ki * handle->Integral) + (handle->Init.Kd * derivative);
+    float rawOutput = (handle->Init.Kp * error) + (handle->KiDiscrete * handle->Integral) + (handle->KdDiscrete * derivative);
     float output = rawOutput;
 
     // Anti-windup back-calculation
