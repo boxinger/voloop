@@ -25,14 +25,14 @@ PID_StateTypeDef PID_GetState(PID_HandleTypeDef* handle);
 
 float PID_Compute(PID_HandleTypeDef* handle, float setpoint, float measurement);
 
-// 条件积分法：在输出饱和且误差继续推动同方向饱和时暂停积分
+// Conditional anti-windup
 float PID_ComputeConditional(PID_HandleTypeDef* handle,
                              float setpoint,
                              float measurement,
                              float outputMin,
                              float outputMax);
 
-// 反算回注法：通过 Kaw * (u_sat - u_raw) 抑制积分饱和
+// Back-calculation anti-windup
 float PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
                                  float setpoint,
                                  float measurement,
