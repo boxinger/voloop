@@ -12,7 +12,28 @@ struct PID_HandleTypeDef {
 };
 
 
-PID_HandleTypeDef* PID_InitDiscrete(PID_InitDiscreteTypeDef* init) {
+PID_HandleTypeDef* PID_Init(const PID_InitTypeDef* init) {
+    if (init == NULL) {
+        return NULL;
+    }
+
+    // handle->Init = *init;
+    switch (init->mode) {
+        case PID_Discrete:
+            return PID_InitDiscrete(&init->init.Discrete);
+        case PID_Continue:
+            return PID_InitContinue(&init->init.Continue);
+        case PID_OneZero:
+            return PID_Init1Zero(&init->init.OneZero);
+        case PID_TwoZero:
+            return PID_Init2Zero(&init->init.TwoZero);
+        default:
+            return NULL;
+    }
+}
+
+
+PID_HandleTypeDef* PID_InitDiscrete(const PID_InitDiscreteTypeDef* init) {
     // Verify input parameter
     if (init == NULL) {
         return NULL;
@@ -36,7 +57,7 @@ PID_HandleTypeDef* PID_InitDiscrete(PID_InitDiscreteTypeDef* init) {
 }
 
     
-PID_HandleTypeDef* PID_InitContinue(PID_InitContinueTypeDef* init) {
+PID_HandleTypeDef* PID_InitContinue(const PID_InitContinueTypeDef* init) {
     // Verify input parameter
     if (init == NULL || init->triggerFrequency == 0U) {
         return NULL;
@@ -60,7 +81,7 @@ PID_HandleTypeDef* PID_InitContinue(PID_InitContinueTypeDef* init) {
 }
 
 
-PID_HandleTypeDef* PID_Init1Zero(PID_Init1ZeroTypeDef* init) {
+PID_HandleTypeDef* PID_Init1Zero(const PID_Init1ZeroTypeDef* init) {
     // Verify input parameter
     if (init == NULL || init->triggerFrequency == 0U) {
         return NULL;
@@ -84,7 +105,7 @@ PID_HandleTypeDef* PID_Init1Zero(PID_Init1ZeroTypeDef* init) {
 }
 
 
-PID_HandleTypeDef* PID_Init2Zero(PID_Init2ZeroTypeDef* init) {
+PID_HandleTypeDef* PID_Init2Zero(const PID_Init2ZeroTypeDef* init) {
     // Verify input parameter
     if (init == NULL || init->triggerFrequency == 0U) {
         return NULL;

@@ -22,6 +22,7 @@ typedef struct {
 } PID_InitContinueTypeDef;
 
 
+// The unit of zero is in Hz, not in rad/s
 typedef struct {
     float gain;
     float zero;
@@ -47,6 +48,24 @@ typedef enum {
 
 typedef struct PID_HandleTypeDef PID_HandleTypeDef;
 
+typedef enum {
+    PID_Discrete = 0U,
+    PID_Continue,
+    PID_OneZero,
+    PID_TwoZero
+} PID_InitModeTypeDef;
+
+typedef struct {
+    PID_InitModeTypeDef mode;
+    union {
+        PID_InitDiscreteTypeDef Discrete;
+        PID_InitContinueTypeDef Continue;
+        PID_Init1ZeroTypeDef OneZero;
+        PID_Init2ZeroTypeDef TwoZero;
+    } init;
+} PID_InitTypeDef;
+
+/*
 #define PID_Init(init) \
     _Generic((init), \
         PID_InitDiscreteTypeDef*: PID_InitDiscrete, \
@@ -54,6 +73,9 @@ typedef struct PID_HandleTypeDef PID_HandleTypeDef;
         PID_Init1ZeroTypeDef*: PID_Init1Zero, \
         PID_Init2ZeroTypeDef*: PID_Init2Zero \
     )(init)
+*/
+
+PID_HandleTypeDef* PID_Init(const PID_InitTypeDef* init);
 PID_HandleTypeDef* PID_InitDiscrete(const PID_InitDiscreteTypeDef* init);
 PID_HandleTypeDef* PID_InitContinue(const PID_InitContinueTypeDef* init);
 PID_HandleTypeDef* PID_Init1Zero(const PID_Init1ZeroTypeDef* init);
