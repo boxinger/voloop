@@ -12,7 +12,7 @@ struct PID_HandleTypeDef {
 };
 
 
-PID_HandleTypeDef* PID_Init(const PID_InitTypeDef* init) {
+PID_HandleTypeDef* VOLOOP_PID_Init(const PID_InitTypeDef* init) {
     if (init == NULL) {
         return NULL;
     }
@@ -33,7 +33,7 @@ PID_HandleTypeDef* PID_Init(const PID_InitTypeDef* init) {
 }
 
 
-PID_HandleTypeDef* PID_InitDiscrete(const PID_InitDiscreteTypeDef* init) {
+PID_HandleTypeDef* VOLOOP_PID_InitDiscrete(const PID_InitDiscreteTypeDef* init) {
     // Verify input parameter
     if (init == NULL) {
         return NULL;
@@ -57,7 +57,7 @@ PID_HandleTypeDef* PID_InitDiscrete(const PID_InitDiscreteTypeDef* init) {
 }
 
     
-PID_HandleTypeDef* PID_InitContinue(const PID_InitContinueTypeDef* init) {
+PID_HandleTypeDef* VOLOOP_PID_InitContinue(const PID_InitContinueTypeDef* init) {
     // Verify input parameter
     if (init == NULL || init->triggerFrequency == 0U) {
         return NULL;
@@ -81,7 +81,7 @@ PID_HandleTypeDef* PID_InitContinue(const PID_InitContinueTypeDef* init) {
 }
 
 
-PID_HandleTypeDef* PID_Init1Zero(const PID_Init1ZeroTypeDef* init) {
+PID_HandleTypeDef* VOLOOP_PID_InitOneZero(const PID_InitOneZeroTypeDef* init) {
     // Verify input parameter
     if (init == NULL || init->triggerFrequency == 0U) {
         return NULL;
@@ -105,7 +105,7 @@ PID_HandleTypeDef* PID_Init1Zero(const PID_Init1ZeroTypeDef* init) {
 }
 
 
-PID_HandleTypeDef* PID_Init2Zero(const PID_Init2ZeroTypeDef* init) {
+PID_HandleTypeDef* VOLOOP_PID_InitTwoZero(const PID_InitTwoZeroTypeDef* init) {
     // Verify input parameter
     if (init == NULL || init->triggerFrequency == 0U) {
         return NULL;
@@ -129,14 +129,14 @@ PID_HandleTypeDef* PID_Init2Zero(const PID_Init2ZeroTypeDef* init) {
 }
 
 
-void PID_DeInit(PID_HandleTypeDef* handle) {
+void VOLOOP_PID_DeInit(PID_HandleTypeDef* handle) {
     if (handle == NULL) {
         return;
     }
     free(handle);
 }
 
-void PID_Reset(PID_HandleTypeDef* handle) {
+void VOLOOP_PID_Reset(PID_HandleTypeDef* handle) {
     if (handle == NULL) {
         return;
     }
@@ -145,28 +145,28 @@ void PID_Reset(PID_HandleTypeDef* handle) {
     handle->State = PID_UnSaturated;
 }
 
-void PID_SetIntegral(PID_HandleTypeDef* handle, float integral) {
+void VOLOOP_PID_SetIntegral(PID_HandleTypeDef* handle, float integral) {
 	if (handle == NULL) {
 		return;
 	}
 	handle->Integral = integral;
 }
 
-void PID_SetPreviousError(PID_HandleTypeDef* handle, float previousError) {
+void VOLOOP_PID_SetPreviousError(PID_HandleTypeDef* handle, float previousError) {
 	if (handle == NULL) {
 		return;
 	}
 	handle->PreviousError = previousError;
 }
 
-PID_StateTypeDef PID_GetState(PID_HandleTypeDef* handle) {
+PID_StateTypeDef VOLOOP_PID_GetState(PID_HandleTypeDef* handle) {
     if (handle == NULL) {
         return PID_ERROR;
     }
     return handle->State;
 }
 
-float PID_Compute(PID_HandleTypeDef* handle, 
+float VOLOOP_PID_Compute(PID_HandleTypeDef* handle, 
 							float setpoint, 
 							float measurement) {
 	if (handle == NULL) {
@@ -181,7 +181,7 @@ float PID_Compute(PID_HandleTypeDef* handle,
 	return output;
 }
 
-float PID_ComputeConditional(PID_HandleTypeDef* handle, 
+float VOLOOP_PID_ComputeConditional(PID_HandleTypeDef* handle, 
 							float setpoint, 
 							float measurement,
 							float outputMin,
@@ -216,7 +216,7 @@ float PID_ComputeConditional(PID_HandleTypeDef* handle,
     return output;
 }
 
-float PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
+float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
                                 float setpoint,
                                 float measurement,
                                 float outputMin,
