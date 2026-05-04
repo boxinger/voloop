@@ -1,5 +1,5 @@
-#ifndef __PID_H
-#define __PID_H
+#ifndef VOLOOP_PID_H
+#define VOLOOP_PID_H
 
 #include <stdint.h>
 
@@ -27,7 +27,7 @@ typedef struct {
     float gain;
     float zero;
     uint32_t triggerFrequency;
-} PID_Init1ZeroTypeDef;
+} PID_InitOneZeroTypeDef;
 
 
 typedef struct {
@@ -35,7 +35,7 @@ typedef struct {
     float zero1;
     float zero2;
     uint32_t triggerFrequency;
-} PID_Init2ZeroTypeDef;
+} PID_InitTwoZeroTypeDef;
 
 
 typedef enum {
@@ -60,8 +60,8 @@ typedef struct {
     union {
         PID_InitDiscreteTypeDef Discrete;
         PID_InitContinueTypeDef Continue;
-        PID_Init1ZeroTypeDef OneZero;
-        PID_Init2ZeroTypeDef TwoZero;
+        PID_InitOneZeroTypeDef OneZero;
+        PID_InitTwoZeroTypeDef TwoZero;
     } init;
 } PID_InitTypeDef;
 
@@ -70,37 +70,37 @@ typedef struct {
     _Generic((init), \
         PID_InitDiscreteTypeDef*: PID_InitDiscrete, \
         PID_InitContinueTypeDef*: PID_InitContinue, \
-        PID_Init1ZeroTypeDef*: PID_Init1Zero, \
-        PID_Init2ZeroTypeDef*: PID_Init2Zero \
+        PID_InitOneZeroTypeDef*: PID_InitOneZero, \
+        PID_InitTwoZeroTypeDef*: PID_InitTwoZero \
     )(init)
 */
 
-PID_HandleTypeDef* PID_Init(const PID_InitTypeDef* init);
-PID_HandleTypeDef* PID_InitDiscrete(const PID_InitDiscreteTypeDef* init);
-PID_HandleTypeDef* PID_InitContinue(const PID_InitContinueTypeDef* init);
-PID_HandleTypeDef* PID_Init1Zero(const PID_Init1ZeroTypeDef* init);
-PID_HandleTypeDef* PID_Init2Zero(const PID_Init2ZeroTypeDef* init);
-void PID_DeInit(PID_HandleTypeDef* handle);
-void PID_Reset(PID_HandleTypeDef* handle);
-void PID_SetIntegral(PID_HandleTypeDef* handle, float integral) ;
-void PID_SetPreviousError(PID_HandleTypeDef* handle, float previousError);
-PID_StateTypeDef PID_GetState(PID_HandleTypeDef* handle);
+PID_HandleTypeDef* VOLOOP_PID_Init(const PID_InitTypeDef* init);
+PID_HandleTypeDef* VOLOOP_PID_InitDiscrete(const PID_InitDiscreteTypeDef* init);
+PID_HandleTypeDef* VOLOOP_PID_InitContinue(const PID_InitContinueTypeDef* init);
+PID_HandleTypeDef* VOLOOP_PID_InitOneZero(const PID_InitOneZeroTypeDef* init);
+PID_HandleTypeDef* VOLOOP_PID_InitTwoZero(const PID_InitTwoZeroTypeDef* init);
+void VOLOOP_PID_DeInit(PID_HandleTypeDef* handle);
+void VOLOOP_PID_Reset(PID_HandleTypeDef* handle);
+void VOLOOP_PID_SetIntegral(PID_HandleTypeDef* handle, float integral) ;
+void VOLOOP_PID_SetPreviousError(PID_HandleTypeDef* handle, float previousError);
+PID_StateTypeDef VOLOOP_PID_GetState(PID_HandleTypeDef* handle);
 
-float PID_Compute(PID_HandleTypeDef* handle, float setpoint, float measurement);
+float VOLOOP_PID_Compute(PID_HandleTypeDef* handle, float setpoint, float measurement);
 
 // Conditional anti-windup
-float PID_ComputeConditional(PID_HandleTypeDef* handle,
-                             float setpoint,
+float VOLOOP_PID_ComputeConditional(PID_HandleTypeDef* handle,
+                                    float setpoint,
                              float measurement,
                              float outputMin,
                              float outputMax);
 
 // Back-calculation anti-windup
-float PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
-                                 float setpoint,
-                                 float measurement,
-                                 float outputMin,
-                                 float outputMax,
+float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
+                                        float setpoint,
+                                        float measurement,
+                                        float outputMin,
+                                        float outputMax,
                                  float antiWindupGain);
 
 
