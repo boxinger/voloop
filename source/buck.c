@@ -1,4 +1,4 @@
-#include "Buck.h"
+#include "buck.h"
 #include <stdlib.h>
 
 struct Buck_HandleTypeDef {
