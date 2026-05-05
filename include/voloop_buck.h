@@ -1,5 +1,5 @@
-#ifndef __BUCK_H
-#define __BUCK_H
+#ifndef VOLOOP_BUCK_H
+#define VOLOOP_BUCK_H
 
 #include "voloop_def.h"
 #include "voloop_pid.h"
@@ -39,18 +39,18 @@ typedef struct Buck_HandleTypeDef Buck_HandleTypeDef;
 #define BUCK_MAX_DUTY 0.90f
 #define BUCK_MIN_DUTY 0.10f
 
-Buck_HandleTypeDef* VOLOOP_Buck_Init(Buck_InitTypeDef* init);
-void VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef** handleOut, Buck_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle);
 
-void VOLOOP_Buck_Start(Buck_HandleTypeDef* handle);
-void VOLOOP_Buck_Stop(Buck_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_Buck_Start(Buck_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_Buck_Stop(Buck_HandleTypeDef* handle);
 Buck_StateTypeDef VOLOOP_Buck_GetState(Buck_HandleTypeDef* handle);
 Buck_FaultCodeTypeDef VOLOOP_Buck_GetFaultCode(Buck_HandleTypeDef* handle);
-void VOLOOP_Buck_ClearFaultCode(Buck_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_Buck_ClearFaultCode(Buck_HandleTypeDef* handle);
 
-void VOLOOP_Buck_SetValue(Buck_HandleTypeDef* handle, float Voltage, float Current);
+VOLOOP_StatusTypeDef VOLOOP_Buck_SetValue(Buck_HandleTypeDef* handle, float Voltage, float Current);
 float VOLOOP_Buck_GetDuty(Buck_HandleTypeDef* handle);
-void VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle);
 
 
-#endif /* __BUCK_H */
+#endif /* VOLOOP_BUCK_H */

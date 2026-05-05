@@ -12,36 +12,36 @@ struct PID_HandleTypeDef {
 };
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef** handlePointer, const PID_InitTypeDef* init) {
-    if (handlePointer == NULL) {
+VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef** handleOut, const PID_InitTypeDef* init) {
+    if (handleOut == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (*handlePointer != NULL || init == NULL) {
+    if (*handleOut != NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
 
     switch (init->mode) {
         case PID_Discrete:
-            return VOLOOP_PID_InitDiscrete(handlePointer, &init->init.Discrete);
+            return VOLOOP_PID_InitDiscrete(handleOut, &init->init.Discrete);
         case PID_Continue:
-            return VOLOOP_PID_InitContinue(handlePointer, &init->init.Continue);
+            return VOLOOP_PID_InitContinue(handleOut, &init->init.Continue);
         case PID_OneZero:
-            return VOLOOP_PID_InitOneZero(handlePointer, &init->init.OneZero);
+            return VOLOOP_PID_InitOneZero(handleOut, &init->init.OneZero);
         case PID_TwoZero:
-            return VOLOOP_PID_InitTwoZero(handlePointer, &init->init.TwoZero);
+            return VOLOOP_PID_InitTwoZero(handleOut, &init->init.TwoZero);
         default:
             return VOLOOP_INVALID_PARAM;
     }
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handlePointer, const PID_InitDiscreteTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handleOut, const PID_InitDiscreteTypeDef* init) {
     // Verify input parameter
-    if (handlePointer == NULL) {
+    if (handleOut == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (*handlePointer != NULL || init == NULL) {
+    if (*handleOut != NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -57,18 +57,18 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handlePointer, 
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
-    *handlePointer = handle;
+    *handleOut = handle;
 
     return VOLOOP_OK;
 }
 
     
-VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handlePointer, const PID_InitContinueTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handleOut, const PID_InitContinueTypeDef* init) {
     // Verify input parameter
-    if (handlePointer == NULL) {
+    if (handleOut == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (*handlePointer != NULL || init == NULL || init->triggerFrequency == 0U) {
+    if (*handleOut != NULL || init == NULL || init->triggerFrequency == 0U) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -85,18 +85,18 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handlePointer, 
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
-    *handlePointer = handle;
+    *handleOut = handle;
 
     return VOLOOP_OK;
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handlePointer, const PID_InitOneZeroTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handleOut, const PID_InitOneZeroTypeDef* init) {
     // Verify input parameter
-    if (handlePointer == NULL) {
+    if (handleOut == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (*handlePointer != NULL || init == NULL || init->triggerFrequency == 0U) {
+    if (*handleOut != NULL || init == NULL || init->triggerFrequency == 0U) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -113,18 +113,18 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handlePointer, c
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
-    *handlePointer = handle;
+    *handleOut = handle;
 
     return VOLOOP_OK;
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handlePointer, const PID_InitTwoZeroTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handleOut, const PID_InitTwoZeroTypeDef* init) {
     // Verify input parameter
-    if (handlePointer == NULL) {
+    if (handleOut == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (*handlePointer != NULL || init == NULL || init->triggerFrequency == 0U) {
+    if (*handleOut != NULL || init == NULL || init->triggerFrequency == 0U) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -141,7 +141,7 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handlePointer, c
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
-    *handlePointer = handle;
+    *handleOut = handle;
 
     return VOLOOP_OK;
 }

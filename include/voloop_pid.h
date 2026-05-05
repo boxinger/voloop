@@ -64,11 +64,11 @@ typedef struct {
 } PID_InitTypeDef;
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef** handlePointer, const PID_InitTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handlePointer, const PID_InitDiscreteTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handlePointer, const PID_InitContinueTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handlePointer, const PID_InitOneZeroTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handlePointer, const PID_InitTwoZeroTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef** handleOut, const PID_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handleOut, const PID_InitDiscreteTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handleOut, const PID_InitContinueTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handleOut, const PID_InitOneZeroTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handleOut, const PID_InitTwoZeroTypeDef* init);
 VOLOOP_StatusTypeDef VOLOOP_PID_DeInit(PID_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PID_Reset(PID_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PID_SetIntegral(PID_HandleTypeDef* handle, float integral) ;
