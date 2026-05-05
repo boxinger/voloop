@@ -1,4 +1,5 @@
 #include "pll.h"
+#include <stdlib.h>
 
 struct PLL_HandleTypeDef {
     PLL_InitTypeDef Init;
