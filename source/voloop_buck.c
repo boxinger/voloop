@@ -44,13 +44,14 @@ Buck_HandleTypeDef*  VOLOOP_Buck_Init(Buck_InitTypeDef* init) {
     init->InitFunc();
 
     //PID initialization
-    handle->OutPutVoltagePID = VOLOOP_PID_Init(init->OutPutVoltagePIDInit);
-    if (handle->OutPutVoltagePID == NULL) {
+    VOLOOP_StatusTypeDef status;
+    status = VOLOOP_PID_Init(&(handle->OutPutVoltagePID), init->OutPutVoltagePIDInit);
+    if (status != VOLOOP_OK) {
         VOLOOP_Buck_DeInit(handle);
         return NULL;
     }
-    handle->InductorCurrentPID = VOLOOP_PID_Init(init->InductorCurrentPIDInit);
-    if (handle->InductorCurrentPID == NULL) {
+    status = VOLOOP_PID_Init(&(handle->InductorCurrentPID), init->InductorCurrentPIDInit);
+    if (status != VOLOOP_OK) {
         VOLOOP_Buck_DeInit(handle);
         return NULL;
     }

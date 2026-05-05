@@ -12,61 +12,70 @@ struct PID_HandleTypeDef {
 };
 
 
-PID_HandleTypeDef* VOLOOP_PID_Init(const PID_InitTypeDef* init) {
-    if (init == NULL) {
-        return NULL;
+VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef** handlePointer, const PID_InitTypeDef* init) {
+    if (handlePointer == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (*handlePointer != NULL || init == NULL) {
+        return VOLOOP_INVALID_PARAM;
     }
 
-    // handle->Init = *init;
+
     switch (init->mode) {
         case PID_Discrete:
-            return VOLOOP_PID_InitDiscrete(&init->init.Discrete);
+            return VOLOOP_PID_InitDiscrete(handlePointer, &init->init.Discrete);
         case PID_Continue:
-            return VOLOOP_PID_InitContinue(&init->init.Continue);
+            return VOLOOP_PID_InitContinue(handlePointer, &init->init.Continue);
         case PID_OneZero:
-            return VOLOOP_PID_InitOneZero(&init->init.OneZero);
+            return VOLOOP_PID_InitOneZero(handlePointer, &init->init.OneZero);
         case PID_TwoZero:
-            return VOLOOP_PID_InitTwoZero(&init->init.TwoZero);
+            return VOLOOP_PID_InitTwoZero(handlePointer, &init->init.TwoZero);
         default:
-            return NULL;
+            return VOLOOP_INVALID_PARAM;
     }
 }
 
 
-PID_HandleTypeDef* VOLOOP_PID_InitDiscrete(const PID_InitDiscreteTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handlePointer, const PID_InitDiscreteTypeDef* init) {
     // Verify input parameter
-    if (init == NULL) {
-        return NULL;
+    if (handlePointer == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (*handlePointer != NULL || init == NULL) {
+        return VOLOOP_INVALID_PARAM;
     }
 
     // Allocate memory for PID handle
-    PID_HandleTypeDef* handle = (PID_HandleTypeDef*)malloc(sizeof(PID_HandleTypeDef));
+    PID_HandleTypeDef* handle = malloc(sizeof(PID_HandleTypeDef));
     if (handle == NULL) {
-        return NULL;
+        return VOLOOP_BAD_ALLOCATE;
     }
 
-    // handle->Init = *init;
     handle->KpDiscrete = init->KpDiscrete;
     handle->KiDiscrete = init->KiDiscrete;
     handle->KdDiscrete = init->KdDiscrete;
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
+    *handlePointer = handle;
 
-    return handle;
+    return VOLOOP_OK;
 }
 
     
-PID_HandleTypeDef* VOLOOP_PID_InitContinue(const PID_InitContinueTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handlePointer, const PID_InitContinueTypeDef* init) {
     // Verify input parameter
-    if (init == NULL || init->triggerFrequency == 0U) {
-        return NULL;
+    if (handlePointer == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (*handlePointer != NULL || init == NULL || init->triggerFrequency == 0U) {
+        return VOLOOP_INVALID_PARAM;
     }
 
     // Allocate memory for PID handle
     PID_HandleTypeDef* handle = (PID_HandleTypeDef*)malloc(sizeof(PID_HandleTypeDef));
     if (handle == NULL) {
-        return NULL;
+        return VOLOOP_BAD_ALLOCATE;
     }
 
     // handle->Init = *init;
@@ -76,21 +85,25 @@ PID_HandleTypeDef* VOLOOP_PID_InitContinue(const PID_InitContinueTypeDef* init) 
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
+    *handlePointer = handle;
 
-    return handle;
+    return VOLOOP_OK;
 }
 
 
-PID_HandleTypeDef* VOLOOP_PID_InitOneZero(const PID_InitOneZeroTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handlePointer, const PID_InitOneZeroTypeDef* init) {
     // Verify input parameter
-    if (init == NULL || init->triggerFrequency == 0U) {
-        return NULL;
+    if (handlePointer == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (*handlePointer != NULL || init == NULL || init->triggerFrequency == 0U) {
+        return VOLOOP_INVALID_PARAM;
     }
 
     // Allocate memory for PID handle
     PID_HandleTypeDef* handle = (PID_HandleTypeDef*)malloc(sizeof(PID_HandleTypeDef));
     if (handle == NULL) {
-        return NULL;
+        return VOLOOP_BAD_ALLOCATE;
     }
 
     // handle->Init = *init;
@@ -100,21 +113,25 @@ PID_HandleTypeDef* VOLOOP_PID_InitOneZero(const PID_InitOneZeroTypeDef* init) {
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
+    *handlePointer = handle;
 
-    return handle;
+    return VOLOOP_OK;
 }
 
 
-PID_HandleTypeDef* VOLOOP_PID_InitTwoZero(const PID_InitTwoZeroTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handlePointer, const PID_InitTwoZeroTypeDef* init) {
     // Verify input parameter
-    if (init == NULL || init->triggerFrequency == 0U) {
-        return NULL;
+    if (handlePointer == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (*handlePointer != NULL || init == NULL || init->triggerFrequency == 0U) {
+        return VOLOOP_INVALID_PARAM;
     }
 
     // Allocate memory for PID handle
     PID_HandleTypeDef* handle = (PID_HandleTypeDef*)malloc(sizeof(PID_HandleTypeDef));
     if (handle == NULL) {
-        return NULL;
+        return VOLOOP_BAD_ALLOCATE;
     }
 
     // handle->Init = *init;
@@ -124,39 +141,44 @@ PID_HandleTypeDef* VOLOOP_PID_InitTwoZero(const PID_InitTwoZeroTypeDef* init) {
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
+    *handlePointer = handle;
 
-    return handle;
+    return VOLOOP_OK;
 }
 
 
-void VOLOOP_PID_DeInit(PID_HandleTypeDef* handle) {
+VOLOOP_StatusTypeDef VOLOOP_PID_DeInit(PID_HandleTypeDef* handle) {
     if (handle == NULL) {
-        return;
+        return VOLOOP_INVALID_PARAM;
     }
     free(handle);
+    return VOLOOP_OK;
 }
 
-void VOLOOP_PID_Reset(PID_HandleTypeDef* handle) {
+VOLOOP_StatusTypeDef VOLOOP_PID_Reset(PID_HandleTypeDef* handle) {
     if (handle == NULL) {
-        return;
+        return VOLOOP_INVALID_PARAM;
     }
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
+    return VOLOOP_OK;
 }
 
-void VOLOOP_PID_SetIntegral(PID_HandleTypeDef* handle, float integral) {
+VOLOOP_StatusTypeDef VOLOOP_PID_SetIntegral(PID_HandleTypeDef* handle, float integral) {
 	if (handle == NULL) {
-		return;
+		return VOLOOP_INVALID_PARAM;
 	}
 	handle->Integral = integral;
+	return VOLOOP_OK;
 }
 
-void VOLOOP_PID_SetPreviousError(PID_HandleTypeDef* handle, float previousError) {
+VOLOOP_StatusTypeDef VOLOOP_PID_SetPreviousError(PID_HandleTypeDef* handle, float previousError) {
 	if (handle == NULL) {
-		return;
+		return VOLOOP_INVALID_PARAM;
 	}
 	handle->PreviousError = previousError;
+	return VOLOOP_OK;
 }
 
 PID_StateTypeDef VOLOOP_PID_GetState(PID_HandleTypeDef* handle) {
