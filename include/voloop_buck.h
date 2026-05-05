@@ -1,7 +1,7 @@
 #ifndef __BUCK_H
 #define __BUCK_H
 
-#include "pid.h"
+#include "voloop_pid.h"
 
 typedef struct {
     void (*InitFunc)(void);
