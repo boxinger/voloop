@@ -1,11 +1,9 @@
 #ifndef VOLOOP_PID_H
 #define VOLOOP_PID_H
 
+#include "voloop_def.h"
 #include <stdint.h>
 
-#define PID_Pi 3.14159265358979323846f
-#define PID_TwoPi (2.0f * PID_Pi)
-#define PID_FourPiSquared (4.0f * PID_Pi * PID_Pi)
 
 typedef struct {
     float KpDiscrete;

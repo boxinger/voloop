@@ -72,8 +72,8 @@ void VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle) {
     handle->Init.DeInitFunc();
 
     // Deinitialize PID controllers
-    PID_DeInit(handle->OutPutVoltagePID);
-    PID_DeInit(handle->InductorCurrentPID);
+    VOLOOP_PID_DeInit(handle->OutPutVoltagePID);
+    VOLOOP_PID_DeInit(handle->InductorCurrentPID);
 
     // Free Buck handle memory
     free(handle);
@@ -170,13 +170,13 @@ void VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle) {
 
     //Protection
     if ( presentCurrent > BUCK_OCTHRESHOLD){
-        Buck_Stop(handle);
+        VOLOOP_Buck_Stop(handle);
         handle->State = BUCK_ERROR;
         handle->FaultCode = BUCK_OCP;
         return;
     }
     if  (presentVoltage > BUCK_OVTHRESHOLD){
-        Buck_Stop(handle);
+        VOLOOP_Buck_Stop(handle);
         handle->State = BUCK_ERROR;
         handle->FaultCode = BUCK_OVP;
         return;

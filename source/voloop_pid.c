@@ -20,13 +20,13 @@ PID_HandleTypeDef* VOLOOP_PID_Init(const PID_InitTypeDef* init) {
     // handle->Init = *init;
     switch (init->mode) {
         case PID_Discrete:
-            return PID_InitDiscrete(&init->init.Discrete);
+            return VOLOOP_PID_InitDiscrete(&init->init.Discrete);
         case PID_Continue:
-            return PID_InitContinue(&init->init.Continue);
+            return VOLOOP_PID_InitContinue(&init->init.Continue);
         case PID_OneZero:
-            return PID_Init1Zero(&init->init.OneZero);
+            return VOLOOP_PID_InitOneZero(&init->init.OneZero);
         case PID_TwoZero:
-            return PID_Init2Zero(&init->init.TwoZero);
+            return VOLOOP_PID_InitTwoZero(&init->init.TwoZero);
         default:
             return NULL;
     }
@@ -95,7 +95,7 @@ PID_HandleTypeDef* VOLOOP_PID_InitOneZero(const PID_InitOneZeroTypeDef* init) {
 
     // handle->Init = *init;
     handle->KpDiscrete = init->gain;
-    handle->KiDiscrete = PID_TwoPi * init->gain * init->zero / init->triggerFrequency; 
+    handle->KiDiscrete = VOLOOP_TwoPi * init->gain * init->zero / init->triggerFrequency; 
     handle->KdDiscrete = 0.0f; 
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
@@ -118,8 +118,8 @@ PID_HandleTypeDef* VOLOOP_PID_InitTwoZero(const PID_InitTwoZeroTypeDef* init) {
     }
 
     // handle->Init = *init;
-    handle->KpDiscrete = PID_TwoPi * init->gain * (init->zero1 + init->zero2);
-    handle->KiDiscrete = PID_FourPiSquared * init->gain * init->zero1 * init->zero2 / init->triggerFrequency;
+    handle->KpDiscrete = VOLOOP_TwoPi * init->gain * (init->zero1 + init->zero2);
+    handle->KiDiscrete = VOLOOP_FourPiSquared * init->gain * init->zero1 * init->zero2 / init->triggerFrequency;
     handle->KdDiscrete = init->gain * init->triggerFrequency;
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;

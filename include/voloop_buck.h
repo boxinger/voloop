@@ -1,6 +1,7 @@
 #ifndef __BUCK_H
 #define __BUCK_H
 
+#include "voloop_def.h"
 #include "voloop_pid.h"
 
 typedef struct {
