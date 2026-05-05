@@ -12,7 +12,7 @@ typedef struct {
 
 typedef enum {
     PLL_ERROR = 0U,
-    PLL_DISABLED,
+    PLL_STOPPED,
     PLL_RUNNING
 } PLL_StateTypeDef;
 
@@ -25,6 +25,9 @@ typedef struct PLL_HandleTypeDef PLL_HandleTypeDef;
 
 PLL_HandleTypeDef* PLL_Init(PLL_InitTypeDef* init);
 void PLL_DeInit(PLL_HandleTypeDef* handle);
+void PLL_Start(PLL_HandleTypeDef* handle);
+void PLL_Stop(PLL_HandleTypeDef* handle);
+PLL_StateTypeDef PLL_GetState(PLL_HandleTypeDef* handle);
 
 PLL_LockStateTypeDef PLL_IsLocked(PLL_HandleTypeDef* handle);
 float PLL_GetPhase(PLL_HandleTypeDef* handle);  // range: -2pi to 2pi
