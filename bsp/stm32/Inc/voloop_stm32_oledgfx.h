@@ -28,7 +28,7 @@ typedef enum {
 	VOLOOP_STM32_OLEDGFX_Wrap
 } VOLOOP_STM32_OLEDGFX_TextModeTypeDef;
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Init(const VOLOOP_STM32_OLEDLL_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Init(I2C_HandleTypeDef* hi2c);
 VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Start(void);
 VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Stop(void);
 VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Clear(void);

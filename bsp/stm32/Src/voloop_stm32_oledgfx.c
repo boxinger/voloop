@@ -23,14 +23,14 @@ static VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_CheckInitialized(void) {
 	return VOLOOP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Init(const VOLOOP_STM32_OLEDLL_InitTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Init(I2C_HandleTypeDef* hi2c) {
 	VOLOOP_StatusTypeDef status;
 
-	if (init == NULL) {
+	if (hi2c == NULL) {
 		return VOLOOP_INVALID_PARAM;
 	}
 
-	status = VOLOOP_STM32_OLEDLL_Init(init);
+	status = VOLOOP_STM32_OLEDLL_Init(hi2c);
 	if (status != VOLOOP_OK) {
 		return status;
 	}
@@ -71,7 +71,7 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Refresh(void) {
 	if (status != VOLOOP_OK) {
 		return status;
 	}
-	return VOLOOP_STM32_OLEDLL_Refresh((const uint8_t*)s_oledGram, VOLOOP_STM32_OLEDGFX_FRAME_BYTES);
+	return VOLOOP_STM32_OLEDLL_Refresh((const uint8_t*)s_oledGram);
 }
 
 VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_DrawPoint(uint8_t x, uint8_t y, uint8_t on) {

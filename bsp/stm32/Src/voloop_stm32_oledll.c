@@ -3,12 +3,11 @@
 #define VOLOOP_STM32_OLEDLL_CTRL_CMD 0x00U
 #define VOLOOP_STM32_OLEDLL_CTRL_DATA 0x40U
 #define VOLOOP_STM32_OLEDLL_CLEAR_CHUNK 16U
+#define VOLOOP_STM32_OLEDLL_TIMEOUT_CMD 10U
+#define VOLOOP_STM32_OLEDLL_TIMEOUT_DATA 100U
 
 typedef struct {
 	I2C_HandleTypeDef* hi2c;
-	uint16_t devAddr;
-	uint32_t timeoutCmd;
-	uint32_t timeoutData;
 	uint8_t isInitialized;
 } VOLOOP_STM32_OLEDLL_ContextTypeDef;
 
@@ -20,12 +19,12 @@ static VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_WriteCmd(uint8_t cmd) {
 	}
 
 	if (HAL_I2C_Mem_Write(s_oledCtx.hi2c,
-						  s_oledCtx.devAddr,
+					  VOLOOP_STM32_OLEDLL_ADDR,
 						  VOLOOP_STM32_OLEDLL_CTRL_CMD,
 						  I2C_MEMADD_SIZE_8BIT,
 						  &cmd,
 						  1U,
-						  s_oledCtx.timeoutCmd) != HAL_OK) {
+					  VOLOOP_STM32_OLEDLL_TIMEOUT_CMD) != HAL_OK) {
 		return VOLOOP_ERROR;
 	}
 
@@ -38,12 +37,12 @@ static VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_WriteDataStream(const uint8_t* d
 	}
 
 	if (HAL_I2C_Mem_Write(s_oledCtx.hi2c,
-						  s_oledCtx.devAddr,
+					  VOLOOP_STM32_OLEDLL_ADDR,
 						  VOLOOP_STM32_OLEDLL_CTRL_DATA,
 						  I2C_MEMADD_SIZE_8BIT,
 						  (uint8_t*)data,
 						  len,
-						  s_oledCtx.timeoutData) != HAL_OK) {
+					  VOLOOP_STM32_OLEDLL_TIMEOUT_DATA) != HAL_OK) {
 		return VOLOOP_ERROR;
 	}
 
@@ -73,17 +72,14 @@ static VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_SetAddrWindow(uint8_t colStart,
 	return VOLOOP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Init(const VOLOOP_STM32_OLEDLL_InitTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Init(I2C_HandleTypeDef* hi2c) {
 	VOLOOP_StatusTypeDef status;
 
-	if (init == NULL || init->hi2c == NULL) {
+	if (hi2c == NULL) {
 		return VOLOOP_INVALID_PARAM;
 	}
 
-	s_oledCtx.hi2c = init->hi2c;
-	s_oledCtx.devAddr = (init->devAddr == 0U) ? VOLOOP_STM32_OLEDLL_DEFAULT_ADDR : init->devAddr;
-	s_oledCtx.timeoutCmd = (init->timeoutCmd == 0U) ? VOLOOP_STM32_OLEDLL_DEFAULT_TIMEOUT_CMD : init->timeoutCmd;
-	s_oledCtx.timeoutData = (init->timeoutData == 0U) ? VOLOOP_STM32_OLEDLL_DEFAULT_TIMEOUT_DATA : init->timeoutData;
+	s_oledCtx.hi2c = hi2c;
 	s_oledCtx.isInitialized = 1U;
 
 	HAL_Delay(100U);
@@ -206,13 +202,13 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Clear(void) {
 	return VOLOOP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Refresh(const uint8_t* buffer, uint16_t length) {
+VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Refresh(const uint8_t* buffer) {
 	VOLOOP_StatusTypeDef status;
 
 	if (s_oledCtx.isInitialized == 0U) {
 		return VOLOOP_INVALID_STATE;
 	}
-	if (buffer == NULL || length != VOLOOP_STM32_OLEDLL_FRAME_BYTES) {
+	if (buffer == NULL) {
 		return VOLOOP_INVALID_PARAM;
 	}
 
@@ -224,5 +220,5 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Refresh(const uint8_t* buffer, uint16_t
 		return status;
 	}
 
-	return VOLOOP_STM32_OLEDLL_WriteDataStream(buffer, length);
+	return VOLOOP_STM32_OLEDLL_WriteDataStream(buffer, VOLOOP_STM32_OLEDLL_FRAME_BYTES);
 }

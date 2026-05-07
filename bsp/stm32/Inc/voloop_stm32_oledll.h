@@ -14,22 +14,13 @@ extern "C" {
 #define VOLOOP_STM32_OLEDLL_PAGE_COUNT (VOLOOP_STM32_OLEDLL_HEIGHT / 8U)
 #define VOLOOP_STM32_OLEDLL_FRAME_BYTES (VOLOOP_STM32_OLEDLL_WIDTH * VOLOOP_STM32_OLEDLL_PAGE_COUNT)
 
-#define VOLOOP_STM32_OLEDLL_DEFAULT_ADDR 0x78U
-#define VOLOOP_STM32_OLEDLL_DEFAULT_TIMEOUT_CMD 10U
-#define VOLOOP_STM32_OLEDLL_DEFAULT_TIMEOUT_DATA 100U
+#define VOLOOP_STM32_OLEDLL_ADDR 0x78U
 
-typedef struct {
-	I2C_HandleTypeDef* hi2c;
-	uint16_t devAddr;
-	uint32_t timeoutCmd;
-	uint32_t timeoutData;
-} VOLOOP_STM32_OLEDLL_InitTypeDef;
-
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Init(const VOLOOP_STM32_OLEDLL_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Init(I2C_HandleTypeDef* hi2c);
 VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Start(void);
 VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Stop(void);
 VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Clear(void);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Refresh(const uint8_t* buffer, uint16_t length);
+VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDLL_Refresh(const uint8_t* buffer);
 
 #ifdef __cplusplus
 }
