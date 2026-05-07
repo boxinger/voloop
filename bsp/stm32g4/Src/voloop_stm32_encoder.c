@@ -19,84 +19,84 @@ static void VOLOOP_STM32_Encoder_ExitCritical(uint32_t primask) {
 	}
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_Encoder_Init(TIM_HandleTypeDef* htim) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_Init(TIM_HandleTypeDef* htim) {
 	if (htim == NULL) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 	if (VOLOOP_STM32_ENCODER_COUNT_SCALE == 0U) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	s_encoderCtx.htim = htim;
 	if (HAL_TIM_Encoder_Start(s_encoderCtx.htim, TIM_CHANNEL_ALL) != HAL_OK) {
 		s_encoderCtx.htim = NULL;
 		s_encoderCtx.isInitialized = 0U;
-		return VOLOOP_ERROR;
+		return VOLOOP_BSP_ERROR;
 	}
 
 	__HAL_TIM_SET_COUNTER(s_encoderCtx.htim, 0U);
 	s_encoderCtx.isInitialized = 1U;
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_Encoder_DeInit(void) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_DeInit(void) {
 	if (s_encoderCtx.isInitialized == 0U || s_encoderCtx.htim == NULL) {
-		return VOLOOP_INVALID_STATE;
+		return VOLOOP_BSP_INVALID_STATE;
 	}
 
 	if (HAL_TIM_Encoder_Stop(s_encoderCtx.htim, TIM_CHANNEL_ALL) != HAL_OK) {
-		return VOLOOP_ERROR;
+		return VOLOOP_BSP_ERROR;
 	}
 
 	s_encoderCtx.htim = NULL;
 	s_encoderCtx.isInitialized = 0U;
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_Encoder_GetCount(int16_t* outCount) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_GetCount(int16_t* outCount) {
 	if (outCount == NULL) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 	if (s_encoderCtx.isInitialized == 0U || s_encoderCtx.htim == NULL) {
-		return VOLOOP_INVALID_STATE;
+		return VOLOOP_BSP_INVALID_STATE;
 	}
 
 	*outCount = (int16_t)__HAL_TIM_GET_COUNTER(s_encoderCtx.htim);
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_Encoder_SetCount(int16_t count) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_SetCount(int16_t count) {
 	if (s_encoderCtx.isInitialized == 0U || s_encoderCtx.htim == NULL) {
-		return VOLOOP_INVALID_STATE;
+		return VOLOOP_BSP_INVALID_STATE;
 	}
 
 	__HAL_TIM_SET_COUNTER(s_encoderCtx.htim, (uint16_t)count);
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_Encoder_Clear(void) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_Clear(void) {
 	if (s_encoderCtx.isInitialized == 0U || s_encoderCtx.htim == NULL) {
-		return VOLOOP_INVALID_STATE;
+		return VOLOOP_BSP_INVALID_STATE;
 	}
 
 	__HAL_TIM_SET_COUNTER(s_encoderCtx.htim, 0U);
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_Encoder_PopCount(int16_t* outDelta) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_PopCount(int16_t* outDelta) {
 	uint32_t primask;
 	int16_t rawCount;
 	int16_t delta;
 	int16_t remainder;
 
 	if (outDelta == NULL) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 	if (s_encoderCtx.isInitialized == 0U || s_encoderCtx.htim == NULL) {
-		return VOLOOP_INVALID_STATE;
+		return VOLOOP_BSP_INVALID_STATE;
 	}
 	if (VOLOOP_STM32_ENCODER_COUNT_SCALE == 0U) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	primask = VOLOOP_STM32_Encoder_EnterCritical();
@@ -107,5 +107,5 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_Encoder_PopCount(int16_t* outDelta) {
 	VOLOOP_STM32_Encoder_ExitCritical(primask);
 
 	*outDelta = delta;
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
