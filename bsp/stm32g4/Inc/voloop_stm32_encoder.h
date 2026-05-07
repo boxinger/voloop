@@ -16,11 +16,11 @@ extern "C" {
 VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_Init(TIM_HandleTypeDef* htim);
 VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_DeInit(void);
 
-VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_GetCount(int16_t* outCount);
+int16_t VOLOOP_STM32_Encoder_GetCount(void);
 VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_SetCount(int16_t count);
 VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_Clear(void);
 
-VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_Encoder_PopCount(int16_t* outDelta);
+int16_t VOLOOP_STM32_Encoder_PopCount(void);
 
 #ifdef __cplusplus
 }
