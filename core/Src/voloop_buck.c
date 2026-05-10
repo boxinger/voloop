@@ -80,8 +80,8 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle) {
     handle->Init.DeInitFunc();
 
     // Deinitialize PID controllers
-    VOLOOP_PID_DeInit(handle->OutPutVoltagePID);
-    VOLOOP_PID_DeInit(handle->InductorCurrentPID);
+    VOLOOP_PID_DeInit(&(handle->OutPutVoltagePID));
+    VOLOOP_PID_DeInit(&(handle->InductorCurrentPID));
 
     // Free Buck handle memory
     free(handle);

@@ -147,11 +147,12 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handleOut, const
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_DeInit(PID_HandleTypeDef* handle) {
-    if (handle == NULL) {
+VOLOOP_StatusTypeDef VOLOOP_PID_DeInit(PID_HandleTypeDef** handleOut) {
+    if (handleOut == NULL || *handleOut == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    free(handle);
+    free(*handleOut);
+    *handleOut = NULL;
     return VOLOOP_OK;
 }
 

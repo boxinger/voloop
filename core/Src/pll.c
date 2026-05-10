@@ -57,7 +57,7 @@ void PLL_DeInit(PLL_HandleTypeDef* handle) {
     handle->Init.DeInitFunc();
 
     // Deinitialize LPF
-    VOLOOP_PID_DeInit(handle->LPF);
+    VOLOOP_PID_DeInit(&(handle->LPF));
 
     // Free PLL handle memory
     free(handle);
