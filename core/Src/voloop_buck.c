@@ -52,14 +52,12 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef** handleOut, Buck_InitT
     VOLOOP_StatusTypeDef status;
     status = VOLOOP_PID_Init(&(handle->OutPutVoltagePID), init->OutPutVoltagePIDInit);
     if (status != VOLOOP_OK) {
-        VOLOOP_Buck_DeInit(handle);
-        *handleOut = NULL;
+        VOLOOP_Buck_DeInit(handleOut);
         return status;
     }
     status = VOLOOP_PID_Init(&(handle->InductorCurrentPID), init->InductorCurrentPIDInit);
     if (status != VOLOOP_OK) {
-        VOLOOP_Buck_DeInit(handle);
-        *handleOut = NULL;
+        VOLOOP_Buck_DeInit(handleOut);
         return status;
     }
 
@@ -67,11 +65,16 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef** handleOut, Buck_InitT
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle) {
+VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef** handleOut) {
     // Verify input parameter
-    if (handle == NULL) {
+    if (handleOut == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
+	if (*handleOut == NULL){
+		return VOLOOP_INVALID_PARAM;
+	}
+
+    Buck_HandleTypeDef* handle = *handleOut;
 
     // Stop the buck converter
     handle->Init.Stop();
@@ -85,6 +88,7 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle) {
 
     // Free Buck handle memory
     free(handle);
+    *handleOut = NULL;
     return VOLOOP_OK;
 }
 

@@ -40,7 +40,7 @@ typedef struct Buck_HandleTypeDef Buck_HandleTypeDef;
 #define BUCK_MIN_DUTY 0.10f
 
 VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef** handleOut, Buck_InitTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef** handleOut);
 
 VOLOOP_StatusTypeDef VOLOOP_Buck_Start(Buck_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_Buck_Stop(Buck_HandleTypeDef* handle);
