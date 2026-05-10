@@ -1,13 +1,13 @@
 #ifndef VOLOOP_PLL_H
 #define VOLOOP_PLL_H
 
-#include "pid.h"
+#include "voloop_pid.h"
 
 typedef struct {
     void (*InitFunc)(void);
     void (*DeInitFunc)(void);
     float (*GetInputValue)(void);
-    PID_InitTypeDef* LPFInit;
+    const PID_InitTypeDef* LPFInit;
 } PLL_InitTypeDef;
 
 typedef enum {

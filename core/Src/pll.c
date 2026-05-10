@@ -38,8 +38,7 @@ PLL_HandleTypeDef* PLL_Init(PLL_InitTypeDef* init) {
     init->InitFunc();
 
     // LPF initialization
-    handle->LPF = PID_Init(init->LPFInit);
-    if (handle->LPF == NULL) {
+    if (VOLOOP_PID_Init(&(handle->LPF), init->LPFInit) != VOLOOP_OK) {
         PLL_DeInit(handle);
         return NULL;
     }
@@ -58,7 +57,7 @@ void PLL_DeInit(PLL_HandleTypeDef* handle) {
     handle->Init.DeInitFunc();
 
     // Deinitialize LPF
-    PID_DeInit(handle->LPF);
+    VOLOOP_PID_DeInit(handle->LPF);
 
     // Free PLL handle memory
     free(handle);
