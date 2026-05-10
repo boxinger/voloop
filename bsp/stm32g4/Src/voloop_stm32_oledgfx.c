@@ -16,77 +16,77 @@ static uint32_t VOLOOP_STM32_OLEDGFX_Pow10(uint8_t n) {
 	return result;
 }
 
-static VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_CheckInitialized(void) {
+static VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_CheckInitialized(void) {
 	if (s_isInitialized == 0U) {
-		return VOLOOP_INVALID_STATE;
+		return VOLOOP_BSP_INVALID_STATE;
 	}
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Init(I2C_HandleTypeDef* hi2c) {
-	VOLOOP_StatusTypeDef status;
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Init(I2C_HandleTypeDef* hi2c) {
+	VOLOOP_BSP_StatusTypeDef status;
 
 	if (hi2c == NULL) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	status = VOLOOP_STM32_OLEDLL_Init(hi2c);
-	if (status != VOLOOP_OK) {
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 
 	memset(s_oledGram, 0, sizeof(s_oledGram));
 	s_isInitialized = 1U;
 
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Start(void) {
-	VOLOOP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
-	if (status != VOLOOP_OK) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Start(void) {
+	VOLOOP_BSP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 	return VOLOOP_STM32_OLEDLL_Start();
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Stop(void) {
-	VOLOOP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
-	if (status != VOLOOP_OK) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Stop(void) {
+	VOLOOP_BSP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 	return VOLOOP_STM32_OLEDLL_Stop();
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Clear(void) {
-	VOLOOP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
-	if (status != VOLOOP_OK) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Clear(void) {
+	VOLOOP_BSP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 	memset(s_oledGram, 0, sizeof(s_oledGram));
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Refresh(void) {
-	VOLOOP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
-	if (status != VOLOOP_OK) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Refresh(void) {
+	VOLOOP_BSP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 	return VOLOOP_STM32_OLEDLL_Refresh((const uint8_t*)s_oledGram);
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_DrawPoint(uint8_t x, uint8_t y, uint8_t on) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_DrawPoint(uint8_t x, uint8_t y, uint8_t on) {
 	uint8_t page;
 	uint8_t bitOffset;
-	VOLOOP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
+	VOLOOP_BSP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
 
-	if (status != VOLOOP_OK) {
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 	if (x >= VOLOOP_STM32_OLEDGFX_WIDTH || y >= VOLOOP_STM32_OLEDGFX_HEIGHT) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 	if (on != VOLOOP_STM32_OLEDGFX_COLOR_OFF && on != VOLOOP_STM32_OLEDGFX_COLOR_ON) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	page = y / 8U;
@@ -98,22 +98,22 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_DrawPoint(uint8_t x, uint8_t y, uint8_
 		s_oledGram[page][x] &= (uint8_t)(~(1U << bitOffset));
 	}
 
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowChar(uint8_t x, uint8_t y, char c) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowChar(uint8_t x, uint8_t y, char c) {
 	uint8_t i;
 	uint8_t j;
 	uint8_t fontData;
 	uint8_t offset;
-	VOLOOP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
+	VOLOOP_BSP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
 
-	if (status != VOLOOP_OK) {
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 	if (x > (VOLOOP_STM32_OLEDGFX_WIDTH - VOLOOP_STM32_OLEDGFX_CHAR_WIDTH)
 		|| y > (VOLOOP_STM32_OLEDGFX_HEIGHT - VOLOOP_STM32_OLEDGFX_CHAR_HEIGHT)) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	if (c < ' ' || c > '~') {
@@ -139,20 +139,20 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowChar(uint8_t x, uint8_t y, char c)
 		}
 	}
 
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowString(uint8_t x,
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowString(uint8_t x,
 													  uint8_t y,
 													  const char* str,
 													  VOLOOP_STM32_OLEDGFX_TextModeTypeDef mode) {
-	VOLOOP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
+	VOLOOP_BSP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
 
-	if (status != VOLOOP_OK) {
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 	if (str == NULL) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	while (*str != '\0') {
@@ -170,7 +170,7 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowString(uint8_t x,
 		}
 
 		status = VOLOOP_STM32_OLEDGFX_ShowChar(x, y, *str);
-		if (status != VOLOOP_OK) {
+		if (status != VOLOOP_BSP_OK) {
 			return status;
 		}
 
@@ -178,17 +178,17 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowString(uint8_t x,
 		str++;
 	}
 
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowNum(uint8_t x, uint8_t y, uint32_t number, uint8_t length) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowNum(uint8_t x, uint8_t y, uint32_t number, uint8_t length) {
 	uint8_t t;
 	uint8_t digit;
 	uint32_t base;
-	VOLOOP_StatusTypeDef status;
+	VOLOOP_BSP_StatusTypeDef status;
 
 	if (length == 0U || length > 10U) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	for (t = 0U; t < length; t++) {
@@ -197,20 +197,20 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowNum(uint8_t x, uint8_t y, uint32_t
 		status = VOLOOP_STM32_OLEDGFX_ShowChar((uint8_t)(x + t * VOLOOP_STM32_OLEDGFX_CHAR_WIDTH),
 											   y,
 											   (char)('0' + digit));
-		if (status != VOLOOP_OK) {
+		if (status != VOLOOP_BSP_OK) {
 			return status;
 		}
 	}
 
-	return VOLOOP_OK;
+	return VOLOOP_BSP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowSignedNum(uint8_t x, uint8_t y, int32_t number, uint8_t length) {
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowSignedNum(uint8_t x, uint8_t y, int32_t number, uint8_t length) {
 	uint32_t absNum;
-	VOLOOP_StatusTypeDef status;
+	VOLOOP_BSP_StatusTypeDef status;
 
 	if (length == 0U || length > 10U) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	if (number < 0) {
@@ -221,14 +221,14 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowSignedNum(uint8_t x, uint8_t y, in
 		absNum = (uint32_t)number;
 	}
 
-	if (status != VOLOOP_OK) {
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 
 	return VOLOOP_STM32_OLEDGFX_ShowNum((uint8_t)(x + VOLOOP_STM32_OLEDGFX_CHAR_WIDTH), y, absNum, length);
 }
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowFloat(uint8_t x,
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowFloat(uint8_t x,
 													 uint8_t y,
 													 float number,
 													 uint8_t width,
@@ -241,13 +241,13 @@ VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowFloat(uint8_t x,
 	float absVal;
 	uint32_t scale;
 
-	VOLOOP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
-	if (status != VOLOOP_OK) {
+	VOLOOP_BSP_StatusTypeDef status = VOLOOP_STM32_OLEDGFX_CheckInitialized();
+	if (status != VOLOOP_BSP_OK) {
 		return status;
 	}
 
 	if (precision > 6U || width == 0U || width > 20U) {
-		return VOLOOP_INVALID_PARAM;
+		return VOLOOP_BSP_INVALID_PARAM;
 	}
 
 	absVal = number;

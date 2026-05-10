@@ -2,7 +2,7 @@
 #define VOLOOP_STM32_OLEDGFX_H
 
 #include <stdint.h>
-#include "voloop_def.h"
+#include "../../common/voloop_bsp_def.h"
 #include "voloop_stm32_oledll.h"
 
 #ifdef __cplusplus
@@ -28,25 +28,25 @@ typedef enum {
 	VOLOOP_STM32_OLEDGFX_Wrap
 } VOLOOP_STM32_OLEDGFX_TextModeTypeDef;
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Init(I2C_HandleTypeDef* hi2c);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Start(void);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Stop(void);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Clear(void);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Refresh(void);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Init(I2C_HandleTypeDef* hi2c);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Start(void);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Stop(void);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Clear(void);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_Refresh(void);
 
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_DrawPoint(uint8_t x, uint8_t y, uint8_t on);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowChar(uint8_t x, uint8_t y, char c);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowString(uint8_t x,
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_DrawPoint(uint8_t x, uint8_t y, uint8_t on);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowChar(uint8_t x, uint8_t y, char c);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowString(uint8_t x,
 													  uint8_t y,
 													  const char* str,
 													  VOLOOP_STM32_OLEDGFX_TextModeTypeDef mode);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowNum(uint8_t x, uint8_t y, uint32_t number, uint8_t length);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowSignedNum(uint8_t x, uint8_t y, int32_t number, uint8_t length);
-VOLOOP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowFloat(uint8_t x,
-													 uint8_t y,
-													 float number,
-													 uint8_t width,
-													 uint8_t precision);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowNum(uint8_t x, uint8_t y, uint32_t number, uint8_t length);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowSignedNum(uint8_t x, uint8_t y, int32_t number, uint8_t length);
+VOLOOP_BSP_StatusTypeDef VOLOOP_STM32_OLEDGFX_ShowFloat(uint8_t x,
+													uint8_t y,
+													float number,
+													uint8_t width,
+													uint8_t precision);
 
 const uint8_t* VOLOOP_STM32_OLEDGFX_GetFrameBuffer(void);
 uint16_t VOLOOP_STM32_OLEDGFX_GetFrameBufferSize(void);
