@@ -5,6 +5,15 @@
 #define VOLOOP_TwoPi (2.0f * VOLOOP_Pi)
 #define VOLOOP_FourPiSquared (4.0f * VOLOOP_Pi * VOLOOP_Pi)
 
+#include <math.h>
+#ifndef VOLOOP_DEF_SIN
+#define VOLOOP_DEF_SIN(x) sinf(x)
+#endif
+
+#ifndef VOLOOP_DEF_COS
+#define VOLOOP_DEF_COS(x) cosf(x)
+#endif
+
 
 typedef enum {
     VOLOOP_OK = 0x00U,

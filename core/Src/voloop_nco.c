@@ -4,11 +4,11 @@
 #include <stdlib.h>
 
 #ifndef NCO_SIN_FUNC
-#define NCO_SIN_FUNC(x) sinf(x)
+#define NCO_SIN_FUNC(x) VOLOOP_DEF_SIN(x)
 #endif
 
 #ifndef NCO_COS_FUNC
-#define NCO_COS_FUNC(x) cosf(x)
+#define NCO_COS_FUNC(x) VOLOOP_DEF_COS(x)
 #endif
 
 #define NCO_Q31_SCALE 2147483648.0f

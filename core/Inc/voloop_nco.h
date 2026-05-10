@@ -38,4 +38,4 @@ float VOLOOP_NCO_GetCosine(NCO_HandleTypeDef* handle);
 
 VOLOOP_StatusTypeDef VOLOOP_NCO_Sync(NCO_HandleTypeDef* handle);
 
-#endif /* __NCO_H */
+#endif /* VOLOOP_NCO_H */
