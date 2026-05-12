@@ -10,11 +10,11 @@
 
 #include <math.h>
 #ifndef VOLOOP_DEF_SIN
-#define VOLOOP_DEF_SIN(x) sinf(x)
+#define VOLOOP_DEF_SIN(x) VOLOOP_DEF_SINQ31(x)
 #endif
 
 #ifndef VOLOOP_DEF_COS
-#define VOLOOP_DEF_COS(x) cosf(x)
+#define VOLOOP_DEF_COS(x) VOLOOP_DEF_COSQ31(x)
 #endif
 
 #ifndef VOLOOP_DEF_PRINTF

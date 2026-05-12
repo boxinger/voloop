@@ -11,7 +11,7 @@ struct PLL_HandleTypeDef {
 	NCO_HandleTypeDef* NCO;
     PLL_StateTypeDef State;
     float InputValue;
-    float Phase;
+    int32_t PhaseQ31;
     float Frequency;
     PLL_LockStateTypeDef LockState;
 };
@@ -42,7 +42,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef** handleOut, const PLL_In
     handle->Init = *init;
     handle->State = PLL_STOPPED;
     handle->InputValue = 0.0f;
-    handle->Phase = 0.0f;
+    handle->PhaseQ31 = 0;
     handle->Frequency = 0.0f;
     handle->LockState = PLL_UNLOCKED;
     handle->LoopFilter = NULL;
@@ -155,13 +155,19 @@ PLL_LockStateTypeDef VOLOOP_PLL_IsLocked(PLL_HandleTypeDef* handle) {
 }
 
 
-float VOLOOP_PLL_GetPhase(PLL_HandleTypeDef* handle) {
+int32_t VOLOOP_PLL_GetPhaseQ31(PLL_HandleTypeDef* handle) {
+    if (handle == NULL) {
+        return 0;
+    }
+    return handle->PhaseQ31;
+}
+
+float VOLOOP_PLL_GetRad(PLL_HandleTypeDef* handle) {
     if (handle == NULL) {
         return 0.0f;
     }
-    return handle->Phase;
+    return VOLOOP_DEF_Q31ToRad(handle->PhaseQ31);
 }
-
 
 float VOLOOP_PLL_GetFrequency(PLL_HandleTypeDef* handle) {
     if (handle == NULL) {
@@ -206,7 +212,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
     }
 
     handle->InputValue = inputValue;
-    handle->Phase = VOLOOP_NCO_GetRad(handle->NCO);
+    handle->PhaseQ31 = VOLOOP_NCO_GetPhaseQ31(handle->NCO);
     handle->Frequency = VOLOOP_NCO_GetFrequency(handle->NCO);
 
     // 4) Simple lock detection
