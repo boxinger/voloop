@@ -1,20 +1,9 @@
 #include "voloop_nco.h"
 #include "voloop_def.h"
-#include <math.h>
 #include <stdlib.h>
 
-#ifndef NCO_SIN_FUNC
-#define NCO_SIN_FUNC(x) VOLOOP_DEF_SIN(x)
-#endif
-
-#ifndef NCO_COS_FUNC
-#define NCO_COS_FUNC(x) VOLOOP_DEF_COS(x)
-#endif
-
-#define NCO_Q31_SCALE 2147483648.0f
-#define NCO_U32_SCALE 4294967296.0f
-#define NCO_PI_INV (1.0f / VOLOOP_Pi)
-#define NCO_Q31_SCALE_INV (1.0f / NCO_Q31_SCALE)
+#define NCO_PHASE_ACCUMULATOR_BITS      32U
+#define NCO_U32_SCALE                   ((float)(1ULL << NCO_PHASE_ACCUMULATOR_BITS))
 
 struct NCO_HandleTypeDef {
     NCO_InitTypeDef Init;
@@ -25,12 +14,12 @@ struct NCO_HandleTypeDef {
     uint32_t PhaseStepQ31;
 };
 
-static int32_t NCO_PhaseToQ31(float phase) {
-    return (int32_t)(phase * NCO_Q31_SCALE * NCO_PI_INV);
+static int32_t NCO_RadToQ31(float rad) {
+    return VOLOOP_DEF_RadToQ31(rad);
 }
 
-static float NCO_Q31ToPhase(int32_t phaseQ31) {
-    return (float)phaseQ31 * VOLOOP_Pi * NCO_Q31_SCALE_INV;
+static float NCO_Q31ToRad(int32_t phaseQ31) {
+    return VOLOOP_DEF_Q31ToRad(phaseQ31);
 }
 
 VOLOOP_StatusTypeDef VOLOOP_NCO_Init(NCO_HandleTypeDef** handleOut, const NCO_InitTypeDef* init) {
@@ -42,8 +31,8 @@ VOLOOP_StatusTypeDef VOLOOP_NCO_Init(NCO_HandleTypeDef** handleOut, const NCO_In
         || init->triggerFrequency == 0U 
         || init->initialFrequency <= 0.0f
         || init->initialFrequency >= (float)init->triggerFrequency
-        || init->initialPhase < -VOLOOP_Pi
-        || init->initialPhase >= VOLOOP_Pi
+        || init->initialRad < -VOLOOP_Pi
+        || init->initialRad >= VOLOOP_Pi
     ) {
         return VOLOOP_INVALID_PARAM;
     }
@@ -60,7 +49,7 @@ VOLOOP_StatusTypeDef VOLOOP_NCO_Init(NCO_HandleTypeDef** handleOut, const NCO_In
     handle->State = NCO_STOPPED;
     handle->Frequency = init->initialFrequency;
     handle->TriggerFrequencyInv = 1.0f / (float)init->triggerFrequency;
-    handle->PhaseQ31 = NCO_PhaseToQ31(init->initialPhase);
+    handle->PhaseQ31 = NCO_RadToQ31(init->initialRad);
     handle->PhaseStepQ31 = (uint32_t)(NCO_U32_SCALE * handle->Frequency * handle->TriggerFrequencyInv);
     *handleOut = handle;
 
@@ -141,26 +130,26 @@ float VOLOOP_NCO_GetFrequency(NCO_HandleTypeDef* handle) {
     return handle->Frequency;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_NCO_SetPhase(NCO_HandleTypeDef* handle, float phase) {
+VOLOOP_StatusTypeDef VOLOOP_NCO_SetRad(NCO_HandleTypeDef* handle, float rad) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
-    if (phase < -VOLOOP_Pi || phase >= VOLOOP_Pi) {
+    if (rad < -VOLOOP_Pi || rad >= VOLOOP_Pi) {
         handle->State = NCO_ERROR;
         return VOLOOP_INVALID_PARAM;
     }
 
-    handle->PhaseQ31 = NCO_PhaseToQ31(phase);
+    handle->PhaseQ31 = NCO_RadToQ31(rad);
     return VOLOOP_OK;
 }
 
-float VOLOOP_NCO_GetPhase(NCO_HandleTypeDef* handle) {
+float VOLOOP_NCO_GetRad(NCO_HandleTypeDef* handle) {
     if (handle == NULL) {
         return 0.0f;
     }
 
-    return NCO_Q31ToPhase(handle->PhaseQ31);
+    return NCO_Q31ToRad(handle->PhaseQ31);
 }
 
 int32_t VOLOOP_NCO_GetPhaseQ31(NCO_HandleTypeDef* handle) {
@@ -184,7 +173,7 @@ float VOLOOP_NCO_GetSine(NCO_HandleTypeDef* handle) {
         return 0.0f;
     }
 
-    return NCO_SIN_FUNC(NCO_Q31ToPhase(handle->PhaseQ31));
+    return VOLOOP_DEF_SINQ31(handle->PhaseQ31);
 }
 
 float VOLOOP_NCO_GetCosine(NCO_HandleTypeDef* handle) {
@@ -192,7 +181,7 @@ float VOLOOP_NCO_GetCosine(NCO_HandleTypeDef* handle) {
         return 0.0f;
     }
 
-    return NCO_COS_FUNC(NCO_Q31ToPhase(handle->PhaseQ31));
+    return VOLOOP_DEF_COSQ31(handle->PhaseQ31);
 }
 
 VOLOOP_StatusTypeDef VOLOOP_NCO_Sync(NCO_HandleTypeDef* handle) {

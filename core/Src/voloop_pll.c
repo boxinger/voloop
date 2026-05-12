@@ -206,7 +206,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
     }
 
     handle->InputValue = inputValue;
-    handle->Phase = VOLOOP_NCO_GetPhase(handle->NCO);
+    handle->Phase = VOLOOP_NCO_GetRad(handle->NCO);
     handle->Frequency = VOLOOP_NCO_GetFrequency(handle->NCO);
 
     // 4) Simple lock detection

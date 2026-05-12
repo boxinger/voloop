@@ -8,7 +8,7 @@
 typedef struct {
     uint32_t triggerFrequency;
     float initialFrequency;
-    float initialPhase;
+    float initialRad;
 } NCO_InitTypeDef;
 
 typedef enum {
@@ -26,11 +26,11 @@ VOLOOP_StatusTypeDef VOLOOP_NCO_Start(NCO_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_NCO_Stop(NCO_HandleTypeDef* handle);
 NCO_StateTypeDef VOLOOP_NCO_GetState(NCO_HandleTypeDef* handle);
 
-// phase range: [-pi, pi), matching STM32 CORDIC Q1.31 phase format
+// rad range: [-pi, pi), matching STM32 CORDIC Q1.31 phase format
 VOLOOP_StatusTypeDef VOLOOP_NCO_SetFrequency(NCO_HandleTypeDef* handle, float frequency);
 float VOLOOP_NCO_GetFrequency(NCO_HandleTypeDef* handle);
-VOLOOP_StatusTypeDef VOLOOP_NCO_SetPhase(NCO_HandleTypeDef* handle, float phase);
-float VOLOOP_NCO_GetPhase(NCO_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_NCO_SetRad(NCO_HandleTypeDef* handle, float rad);
+float VOLOOP_NCO_GetRad(NCO_HandleTypeDef* handle);
 int32_t VOLOOP_NCO_GetPhaseQ31(NCO_HandleTypeDef* handle);
 const int32_t* VOLOOP_NCO_GetPhaseQ31Address(NCO_HandleTypeDef* handle);
 float VOLOOP_NCO_GetSine(NCO_HandleTypeDef* handle);
