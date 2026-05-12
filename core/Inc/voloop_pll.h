@@ -1,13 +1,16 @@
+// Phase-Locked Loop
 #ifndef VOLOOP_PLL_H
 #define VOLOOP_PLL_H
 
 #include "voloop_pid.h"
+#include "voloop_nco.h"
 
 typedef struct {
     void (*InitFunc)(void);
     void (*DeInitFunc)(void);
     float (*GetInputValue)(void);
-    const PID_InitTypeDef* LPFInit;
+    const PID_InitTypeDef* LoopFilterInit;
+    const NCO_InitTypeDef* NCOInit;
 } PLL_InitTypeDef;
 
 typedef enum {
