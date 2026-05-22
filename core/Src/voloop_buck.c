@@ -117,6 +117,11 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Stop(Buck_HandleTypeDef* handle) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
+    
+    if (handle->State == BUCK_ERROR) {
+        return VOLOOP_INVALID_STATE;
+    }
+    
     handle->Init.Stop();
     handle->State = BUCK_DISABLED;
     return VOLOOP_OK;

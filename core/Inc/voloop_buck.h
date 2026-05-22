@@ -33,8 +33,8 @@ typedef enum{
 
 typedef struct Buck_HandleTypeDef Buck_HandleTypeDef;
 
-#define BUCK_OVTHRESHOLD 20.0f
-#define BUCK_OCTHRESHOLD 2.0f
+#define BUCK_OVTHRESHOLD 50.0f
+#define BUCK_OCTHRESHOLD 5.0f
 
 #define BUCK_MAX_DUTY 0.90f
 #define BUCK_MIN_DUTY 0.10f
