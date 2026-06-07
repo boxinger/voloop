@@ -44,7 +44,14 @@ typedef enum {
 } PID_StateTypeDef;
 
 
-typedef struct PID_HandleTypeDef PID_HandleTypeDef;
+typedef struct {
+    float KpDiscrete;
+    float KiDiscrete;
+    float KdDiscrete;
+    float Integral;
+    float PreviousError;
+    PID_StateTypeDef State;
+} PID_HandleTypeDef;
 
 typedef enum {
     PID_Discrete = 0U,
@@ -64,12 +71,12 @@ typedef struct {
 } PID_InitTypeDef;
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef** handleOut, const PID_InitTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handleOut, const PID_InitDiscreteTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handleOut, const PID_InitContinueTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handleOut, const PID_InitOneZeroTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handleOut, const PID_InitTwoZeroTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PID_DeInit(PID_HandleTypeDef** handleOut);
+VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef* handle, const PID_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef* handle, const PID_InitDiscreteTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef* handle, const PID_InitContinueTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef* handle, const PID_InitOneZeroTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef* handle, const PID_InitTwoZeroTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_DeInit(PID_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PID_Reset(PID_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PID_SetIntegral(PID_HandleTypeDef* handle, float integral) ;
 VOLOOP_StatusTypeDef VOLOOP_PID_SetPreviousError(PID_HandleTypeDef* handle, float previousError);

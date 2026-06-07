@@ -7,7 +7,7 @@
 
 struct PLL_HandleTypeDef {
     PLL_InitTypeDef Init;
-    PID_HandleTypeDef* LoopFilter;
+    PID_HandleTypeDef LoopFilter;
 	NCO_HandleTypeDef* NCO;
     PLL_StateTypeDef State;
     float InputValue;
@@ -45,7 +45,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef** handleOut, const PLL_In
     handle->PhaseQ31 = 0;
     handle->Frequency = 0.0f;
     handle->LockState = PLL_UNLOCKED;
-    handle->LoopFilter = NULL;
+    handle->LoopFilter = (PID_HandleTypeDef){0};
     handle->NCO = NULL;
     *handleOut = handle;
 
@@ -110,7 +110,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle) {
         return status;
     }
 
-    VOLOOP_PID_Reset(handle->LoopFilter);
+    VOLOOP_PID_Reset(&(handle->LoopFilter));
     handle->LockState = PLL_UNLOCKED;
 
     handle->State = PLL_RUNNING;
@@ -192,7 +192,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
     float phaseError = inputValue * ncoCos;
 
     // 2) Loop filter: PI output as frequency correction
-    float frequencyCorrection = VOLOOP_PID_Compute(handle->LoopFilter, 0.0f, -phaseError);
+    float frequencyCorrection = VOLOOP_PID_Compute(&(handle->LoopFilter), 0.0f, -phaseError);
 
     // 3) Update NCO frequency and phase
     // float nextFrequency = VOLOOP_NCO_GetFrequency(handle->NCO) + frequencyCorrection;

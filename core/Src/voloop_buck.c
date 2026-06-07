@@ -3,8 +3,8 @@
 
 struct Buck_HandleTypeDef {
     Buck_InitTypeDef Init;
-    PID_HandleTypeDef* OutPutVoltagePID;
-    PID_HandleTypeDef* InductorCurrentPID;
+    PID_HandleTypeDef OutPutVoltagePID;
+    PID_HandleTypeDef InductorCurrentPID;
     Buck_StateTypeDef State;
     Buck_FaultCodeTypeDef FaultCode;
     float TargetOutputVoltage;
@@ -41,8 +41,8 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef** handleOut, Buck_InitT
     handle->Duty = 0.0f;
     handle->State = BUCK_DISABLED;
     handle->FaultCode = BUCK_NOERROR;
-    handle->OutPutVoltagePID = NULL;
-    handle->InductorCurrentPID = NULL;
+    handle->OutPutVoltagePID = (PID_HandleTypeDef){0};
+    handle->InductorCurrentPID = (PID_HandleTypeDef){0};
     (*handleOut) = handle;
 
     // Call user-defined initialization function
@@ -104,8 +104,8 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Start(Buck_HandleTypeDef* handle) {
         return VOLOOP_INVALID_STATE; 
     }
     
-    VOLOOP_PID_Reset(handle->OutPutVoltagePID);
-    VOLOOP_PID_Reset(handle->InductorCurrentPID);
+    VOLOOP_PID_Reset(&(handle->OutPutVoltagePID));
+    VOLOOP_PID_Reset(&(handle->InductorCurrentPID));
     handle->State = BUCK_CVMODE; // Default to CV mode when starting
     handle->Init.Start();
     
@@ -206,15 +206,15 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle) {
     }
 
     //Compute target inductor current based on output voltage error, with anti-windup
-    float targetInductorCurrent = VOLOOP_PID_ComputeConditional(handle->OutPutVoltagePID, handle->TargetOutputVoltage, presentVoltage, 0.0f, handle->MaxInductorCurrent);
+    float targetInductorCurrent = VOLOOP_PID_ComputeConditional(&(handle->OutPutVoltagePID), handle->TargetOutputVoltage, presentVoltage, 0.0f, handle->MaxInductorCurrent);
     
-    if (VOLOOP_PID_GetState(handle->OutPutVoltagePID) == PID_UpperSaturated){
+    if (VOLOOP_PID_GetState(&(handle->OutPutVoltagePID)) == PID_UpperSaturated){
         handle->State = BUCK_CCMODE;
     } else {
         handle->State = BUCK_CVMODE;
     }
     
-    float duty = VOLOOP_PID_ComputeConditional(handle->InductorCurrentPID, targetInductorCurrent, presentCurrent, BUCK_MIN_DUTY, BUCK_MAX_DUTY);
+    float duty = VOLOOP_PID_ComputeConditional(&(handle->InductorCurrentPID), targetInductorCurrent, presentCurrent, BUCK_MIN_DUTY, BUCK_MAX_DUTY);
 
     // Set duty cycle
     handle->Duty = duty;
