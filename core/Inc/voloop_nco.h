@@ -17,10 +17,17 @@ typedef enum {
     NCO_RUNNING
 } NCO_StateTypeDef;
 
-typedef struct NCO_HandleTypeDef NCO_HandleTypeDef;
+typedef struct {
+    NCO_InitTypeDef Init;
+    NCO_StateTypeDef State;
+    float Frequency;
+    float TriggerFrequencyInv;
+    int32_t PhaseQ31;
+    uint32_t PhaseStepQ31;
+} NCO_HandleTypeDef;
 
-VOLOOP_StatusTypeDef VOLOOP_NCO_Init(NCO_HandleTypeDef** handleOut, const NCO_InitTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_NCO_DeInit(NCO_HandleTypeDef** handleOut);
+VOLOOP_StatusTypeDef VOLOOP_NCO_Init(NCO_HandleTypeDef* handle, const NCO_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_NCO_DeInit(NCO_HandleTypeDef* handle);
 
 VOLOOP_StatusTypeDef VOLOOP_NCO_Start(NCO_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_NCO_Stop(NCO_HandleTypeDef* handle);

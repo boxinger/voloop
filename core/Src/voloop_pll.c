@@ -8,7 +8,7 @@
 struct PLL_HandleTypeDef {
     PLL_InitTypeDef Init;
     PID_HandleTypeDef LoopFilter;
-	NCO_HandleTypeDef* NCO;
+	NCO_HandleTypeDef NCO;
     PLL_StateTypeDef State;
     float InputValue;
     int32_t PhaseQ31;
@@ -46,7 +46,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef** handleOut, const PLL_In
     handle->Frequency = 0.0f;
     handle->LockState = PLL_UNLOCKED;
     handle->LoopFilter = (PID_HandleTypeDef){0};
-    handle->NCO = NULL;
+    handle->NCO = (NCO_HandleTypeDef){0};
     *handleOut = handle;
 
     // Call user-defined initialization function
@@ -103,7 +103,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle) {
         return VOLOOP_INVALID_STATE;
     }
 
-    VOLOOP_StatusTypeDef status = VOLOOP_NCO_Start(handle->NCO);
+    VOLOOP_StatusTypeDef status = VOLOOP_NCO_Start(&(handle->NCO));
     if (status != VOLOOP_OK) {
         handle->State = PLL_ERROR;
         handle->LockState = PLL_UNLOCKED;
@@ -126,7 +126,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Stop(PLL_HandleTypeDef* handle) {
         return VOLOOP_INVALID_STATE;
     }
 
-    VOLOOP_StatusTypeDef status = VOLOOP_NCO_Stop(handle->NCO);
+    VOLOOP_StatusTypeDef status = VOLOOP_NCO_Stop(&(handle->NCO));
     if (status != VOLOOP_OK) {
         handle->State = PLL_ERROR;
         handle->LockState = PLL_UNLOCKED;
@@ -188,7 +188,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
 
     // 1) Phase detector: input(sin) * NCO(cos)
     float inputValue = handle->Init.GetInputValue();
-    float ncoCos = VOLOOP_NCO_GetCosine(handle->NCO);
+    float ncoCos = VOLOOP_NCO_GetCosine(&(handle->NCO));
     float phaseError = inputValue * ncoCos;
 
     // 2) Loop filter: PI output as frequency correction
@@ -197,14 +197,14 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
     // 3) Update NCO frequency and phase
     // float nextFrequency = VOLOOP_NCO_GetFrequency(handle->NCO) + frequencyCorrection;
 	float nextFrequency = handle->Init.NCOInit->initialFrequency + frequencyCorrection;
-    volatile VOLOOP_StatusTypeDef status = VOLOOP_NCO_SetFrequency(handle->NCO, nextFrequency);
+    volatile VOLOOP_StatusTypeDef status = VOLOOP_NCO_SetFrequency(&(handle->NCO), nextFrequency);
     if (status != VOLOOP_OK) {
         handle->State = PLL_ERROR;
         handle->LockState = PLL_UNLOCKED;
         return status;
     }
 
-    status = VOLOOP_NCO_Sync(handle->NCO);
+    status = VOLOOP_NCO_Sync(&(handle->NCO));
     if (status != VOLOOP_OK) {
         handle->State = PLL_ERROR;
         handle->LockState = PLL_UNLOCKED;
@@ -212,8 +212,8 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
     }
 
     handle->InputValue = inputValue;
-    handle->PhaseQ31 = VOLOOP_NCO_GetPhaseQ31(handle->NCO);
-    handle->Frequency = VOLOOP_NCO_GetFrequency(handle->NCO);
+    handle->PhaseQ31 = VOLOOP_NCO_GetPhaseQ31(&(handle->NCO));
+    handle->Frequency = VOLOOP_NCO_GetFrequency(&(handle->NCO));
 
     // 4) Simple lock detection
     if ((fabsf(phaseError) < PLL_LOCK_PHASE_ERR_THRESHOLD)
