@@ -26,8 +26,8 @@ typedef enum {
 
 typedef struct PLL_HandleTypeDef PLL_HandleTypeDef;
 
-VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef** handleOut, const PLL_InitTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef** handleOut);
+VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PLL_Stop(PLL_HandleTypeDef* handle);
 PLL_StateTypeDef VOLOOP_PLL_GetState(PLL_HandleTypeDef* handle);

@@ -1,9 +1,8 @@
 #include "voloop_pll.h"
 #include "voloop_def.h"
-#include <stdlib.h>
 
-#define PLL_LOCK_PHASE_ERR_THRESHOLD 0.05f
-#define PLL_LOCK_FREQ_ERR_THRESHOLD 5.0f
+#define PLL_LOCK_PHASE_ERR_THRESHOLD 1.0f
+#define PLL_LOCK_FREQ_ERR_THRESHOLD 3.0f
 
 struct PLL_HandleTypeDef {
     PLL_InitTypeDef Init;
@@ -16,25 +15,19 @@ struct PLL_HandleTypeDef {
     PLL_LockStateTypeDef LockState;
 };
 
-VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef** handleOut, const PLL_InitTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTypeDef* init) {
     // Verify input parameters
-    if (handleOut == NULL) {
+    if (handle == NULL
+        || init == NULL
+    ) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (*handleOut != NULL
-        || init == NULL
-        || init->InitFunc == NULL
+    if (init->InitFunc == NULL
         || init->DeInitFunc == NULL
         || init->GetInputValue == NULL
         || init->LoopFilterInit == NULL
         || init->NCOInit == NULL) {
         return VOLOOP_INVALID_PARAM;
-    }
-
-    // Allocate memory for PLL handle
-    PLL_HandleTypeDef* handle = malloc(sizeof(PLL_HandleTypeDef));
-    if (handle == NULL) {
-        return VOLOOP_BAD_ALLOCATE;
     }
 
     // Load initialization parameters
@@ -47,7 +40,6 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef** handleOut, const PLL_In
     handle->LockState = PLL_UNLOCKED;
     handle->LoopFilter = (PID_HandleTypeDef){0};
     handle->NCO = (NCO_HandleTypeDef){0};
-    *handleOut = handle;
 
     // Call user-defined initialization function
     init->InitFunc();
@@ -56,13 +48,13 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef** handleOut, const PLL_In
     VOLOOP_StatusTypeDef status;
     status = VOLOOP_PID_Init(&(handle->LoopFilter), init->LoopFilterInit);
     if (status != VOLOOP_OK) {
-        VOLOOP_PLL_DeInit(handleOut);
+        VOLOOP_PLL_DeInit(handle);
         return status;
     }
 
     status = VOLOOP_NCO_Init(&(handle->NCO), init->NCOInit);
     if (status != VOLOOP_OK) {
-        VOLOOP_PLL_DeInit(handleOut);
+        VOLOOP_PLL_DeInit(handle);
         return status;
     }
 
@@ -70,16 +62,11 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef** handleOut, const PLL_In
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef** handleOut) {
+VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef* handle) {
     // Verify input parameter
-    if (handleOut == NULL) {
+    if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (*handleOut == NULL) {
-        return VOLOOP_INVALID_PARAM;
-    }
-
-    PLL_HandleTypeDef* handle = *handleOut;
 
     // Call user-defined deinitialization function
     handle->Init.DeInitFunc();
@@ -88,9 +75,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef** handleOut) {
     VOLOOP_PID_DeInit(&(handle->LoopFilter));
     VOLOOP_NCO_DeInit(&(handle->NCO));
 
-    // Free PLL handle memory
-    free(handle);
-    *handleOut = NULL;
+    *handle = (PLL_HandleTypeDef){0};
     return VOLOOP_OK;
 }
 
