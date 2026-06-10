@@ -80,11 +80,6 @@ typedef struct {
 } FOF_HandlerTypeDef;
 
 VOLOOP_StatusTypeDef VOLOOP_FOF_Init(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init);
-// VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigDiscrete(FOF_HandlerTypeDef* handle, const FOF_InitDiscreteTypeDef* init);
-// VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigContinue(FOF_HandlerTypeDef* handle, const FOF_InitContinueTypeDef* init);
-// VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLowPass(FOF_HandlerTypeDef* handle, const FOF_InitLowPassTypeDef* init);
-// VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigHighPass(FOF_HandlerTypeDef* handle, const FOF_InitHighPassTypeDef* init);
-// VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLeadLag(FOF_HandlerTypeDef* handle, const FOF_InitLeadLagTypeDef* init);
 VOLOOP_StatusTypeDef VOLOOP_FOF_DeInit(FOF_HandlerTypeDef* handle);
 
 VOLOOP_StatusTypeDef VOLOOP_FOF_Reconfig(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init);
