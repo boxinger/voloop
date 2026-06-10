@@ -1,3 +1,11 @@
+/*
+OneZero mode:
+    Gc(s) = Kp + Ki / s
+        = K * (s + wz) / s
+TwoZero mode:
+    Gc(s) = Kd * s + Kp + Ki / s
+        = K * (s + wz1) * (s + wz2) / s
+*/
 #ifndef VOLOOP_PID_H
 #define VOLOOP_PID_H
 
@@ -92,12 +100,13 @@ float VOLOOP_PID_ComputeConditional(PID_HandleTypeDef* handle,
                             float outputMax);
 
 // Back-calculation anti-windup
+// Kb should be greater than 0
 float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
                                 float setpoint,
                                 float measurement,
                                 float outputMin,
                                 float outputMax,
-                                float antiWindupGain);
+                                float Kb);
 
 
 #endif /* VOLOOP_PID_H */

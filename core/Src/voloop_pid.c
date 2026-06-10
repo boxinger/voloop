@@ -171,30 +171,36 @@ float VOLOOP_PID_ComputeConditional(PID_HandleTypeDef* handle,
         return 0.0f;
     }
     float error = setpoint - measurement;
-	float newIntegral = handle->Integral + error;
-	float derivative = error - handle->PreviousError;
-	float output = (handle->KpDiscrete * error) + (handle->KiDiscrete * newIntegral) + (handle->KdDiscrete * derivative);
+    float derivative = error - handle->PreviousError;
 
-    if (output > outputMax){
-        output = outputMax; 
-    } else if (output < outputMin) {
-        output = outputMin;
-    }
+    // 1) Tentatively integrate, then compute the *raw* (pre-clamp) output.
+    float newIntegral = handle->Integral + error;
+    float rawOutput = (handle->KpDiscrete * error)
+                    + (handle->KiDiscrete * newIntegral)
+                    + (handle->KdDiscrete * derivative);
 
-    // Anti-windup
-    if (output >= outputMax && error > 0.0f){
-        newIntegral = handle->Integral; 
+    // 2) Conditional integration (anti-windup): decide on the raw output,
+    //    *before* clamping. Freeze the integral only when the output is
+    //    saturated AND the error would drive it further into saturation.
+    if (rawOutput > outputMax && error > 0.0f) {
+        newIntegral = handle->Integral;        // hold integral, no windup
         handle->State = PID_UpperSaturated;
-    } else if (output <= outputMin && error < 0.0f) {
-        newIntegral = handle->Integral; 
+    } else if (rawOutput < outputMin && error < 0.0f) {
+        newIntegral = handle->Integral;        // hold integral, no windup
         handle->State = PID_LowerSaturated;
     } else {
-        handle->State = PID_UnSaturated;
+        handle->State = PID_UnSaturated;        // free to integrate
     }
     handle->Integral = newIntegral;
     handle->PreviousError = error;
 
-    return output;
+    // 3) Strict output limiting: the returned value is always within range.
+    if (rawOutput > outputMax) {
+        return outputMax;
+    } else if (rawOutput < outputMin) {
+        return outputMin;
+    }
+    return rawOutput;
 }
 
 float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
@@ -202,7 +208,7 @@ float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
                                 float measurement,
                                 float outputMin,
                                 float outputMax,
-                                float antiWindupGain){
+                                float Kb){
     if (handle == NULL) {
         return 0.0f;
     }
@@ -215,11 +221,11 @@ float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
     // Anti-windup back-calculation
     if (rawOutput > outputMax) {
         output = outputMax;
-        handle->Integral += error + antiWindupGain * (outputMax - rawOutput);
+        handle->Integral += error + Kb * (outputMax - rawOutput);
         handle->State = PID_UpperSaturated;
     } else if (rawOutput < outputMin) {
         output = outputMin;
-        handle->Integral += error + antiWindupGain * (outputMin - rawOutput);
+        handle->Integral += error + Kb * (outputMin - rawOutput);
         handle->State = PID_LowerSaturated;
     } else {
         handle->Integral += error; 
