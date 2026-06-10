@@ -84,15 +84,25 @@ NCO_StateTypeDef VOLOOP_NCO_GetState(NCO_HandleTypeDef* handle) {
     return handle->State;
 }
 
+VOLOOP_StatusTypeDef VOLOOP_NCO_ClearFaultCode(NCO_HandleTypeDef* handle) {
+    if (handle == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+
+    if (handle->State != NCO_ERROR) {
+        return VOLOOP_INVALID_STATE;
+    }
+
+    handle->State = NCO_STOPPED;
+    return VOLOOP_OK;
+}
+
 VOLOOP_StatusTypeDef VOLOOP_NCO_SetFrequency(NCO_HandleTypeDef* handle, float frequency) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
     if (frequency <= 0.0f || frequency >= (float)handle->Init.triggerFrequency) {
-        handle->Frequency = 0.0f;
-        handle->PhaseStepQ31 = 0U;
-        handle->State = NCO_ERROR;
         return VOLOOP_INVALID_PARAM;
     }
 

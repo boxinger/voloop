@@ -32,6 +32,7 @@ VOLOOP_StatusTypeDef VOLOOP_NCO_DeInit(NCO_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_NCO_Start(NCO_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_NCO_Stop(NCO_HandleTypeDef* handle);
 NCO_StateTypeDef VOLOOP_NCO_GetState(NCO_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_NCO_ClearFaultCode(NCO_HandleTypeDef* handle);
 
 // rad range: [-pi, pi), matching STM32 CORDIC Q1.31 phase format
 VOLOOP_StatusTypeDef VOLOOP_NCO_SetFrequency(NCO_HandleTypeDef* handle, float frequency);
