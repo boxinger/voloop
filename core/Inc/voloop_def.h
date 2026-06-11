@@ -2,6 +2,7 @@
 #define VOLOOP_DEF_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define VOLOOP_Pi 3.14159265358979323846f
 #define VOLOOP_Pi_Inv (1.0f / VOLOOP_Pi)

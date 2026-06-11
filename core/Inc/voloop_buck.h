@@ -31,7 +31,16 @@ typedef enum{
     BUCK_OVP
 }Buck_FaultCodeTypeDef;
 
-typedef struct Buck_HandleTypeDef Buck_HandleTypeDef;
+typedef struct {
+    Buck_InitTypeDef Init;
+    PID_HandleTypeDef OutPutVoltagePID;
+    PID_HandleTypeDef InductorCurrentPID;
+    Buck_StateTypeDef State;
+    Buck_FaultCodeTypeDef FaultCode;
+    float TargetOutputVoltage;
+    float MaxInductorCurrent;
+    float Duty;
+}Buck_HandleTypeDef;
 
 #define BUCK_OVTHRESHOLD 50.0f
 #define BUCK_OCTHRESHOLD 5.0f
@@ -39,8 +48,8 @@ typedef struct Buck_HandleTypeDef Buck_HandleTypeDef;
 #define BUCK_MAX_DUTY 0.90f
 #define BUCK_MIN_DUTY 0.10f
 
-VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef** handleOut, Buck_InitTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef** handleOut);
+VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef* handle, Buck_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle);
 
 VOLOOP_StatusTypeDef VOLOOP_Buck_Start(Buck_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_Buck_Stop(Buck_HandleTypeDef* handle);

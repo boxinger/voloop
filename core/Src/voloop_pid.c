@@ -1,54 +1,31 @@
 #include "voloop_pid.h"
-#include <stdlib.h>
-
-struct PID_HandleTypeDef {
-    // PID_InitTypeDef Init;
-    float KpDiscrete;
-    float KiDiscrete;
-    float KdDiscrete;
-    float Integral;
-    float PreviousError;
-    PID_StateTypeDef State;
-};
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef** handleOut, const PID_InitTypeDef* init) {
-    if (handleOut == NULL) {
-        return VOLOOP_INVALID_PARAM;
-    }
-    if (*handleOut != NULL || init == NULL) {
+VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef* handle, const PID_InitTypeDef* init) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
 
     switch (init->mode) {
         case PID_Discrete:
-            return VOLOOP_PID_InitDiscrete(handleOut, &init->init.Discrete);
+            return VOLOOP_PID_InitDiscrete(handle, &init->init.Discrete);
         case PID_Continue:
-            return VOLOOP_PID_InitContinue(handleOut, &init->init.Continue);
+            return VOLOOP_PID_InitContinue(handle, &init->init.Continue);
         case PID_OneZero:
-            return VOLOOP_PID_InitOneZero(handleOut, &init->init.OneZero);
+            return VOLOOP_PID_InitOneZero(handle, &init->init.OneZero);
         case PID_TwoZero:
-            return VOLOOP_PID_InitTwoZero(handleOut, &init->init.TwoZero);
+            return VOLOOP_PID_InitTwoZero(handle, &init->init.TwoZero);
         default:
             return VOLOOP_INVALID_PARAM;
     }
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handleOut, const PID_InitDiscreteTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef* handle, const PID_InitDiscreteTypeDef* init) {
     // Verify input parameter
-    if (handleOut == NULL) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
-    }
-    if (*handleOut != NULL || init == NULL) {
-        return VOLOOP_INVALID_PARAM;
-    }
-
-    // Allocate memory for PID handle
-    PID_HandleTypeDef* handle = malloc(sizeof(PID_HandleTypeDef));
-    if (handle == NULL) {
-        return VOLOOP_BAD_ALLOCATE;
     }
 
     handle->KpDiscrete = init->KpDiscrete;
@@ -57,25 +34,15 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef** handleOut, cons
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
-    *handleOut = handle;
 
     return VOLOOP_OK;
 }
 
     
-VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handleOut, const PID_InitContinueTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef* handle, const PID_InitContinueTypeDef* init) {
     // Verify input parameter
-    if (handleOut == NULL) {
+    if (handle == NULL || init == NULL || init->triggerFrequency == 0U) {
         return VOLOOP_INVALID_PARAM;
-    }
-    if (*handleOut != NULL || init == NULL || init->triggerFrequency == 0U) {
-        return VOLOOP_INVALID_PARAM;
-    }
-
-    // Allocate memory for PID handle
-    PID_HandleTypeDef* handle = (PID_HandleTypeDef*)malloc(sizeof(PID_HandleTypeDef));
-    if (handle == NULL) {
-        return VOLOOP_BAD_ALLOCATE;
     }
 
     // handle->Init = *init;
@@ -85,25 +52,18 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef** handleOut, cons
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
-    *handleOut = handle;
 
     return VOLOOP_OK;
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handleOut, const PID_InitOneZeroTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef* handle, const PID_InitOneZeroTypeDef* init) {
     // Verify input parameter
-    if (handleOut == NULL) {
-        return VOLOOP_INVALID_PARAM;
-    }
-    if (*handleOut != NULL || init == NULL || init->triggerFrequency == 0U) {
-        return VOLOOP_INVALID_PARAM;
-    }
-
-    // Allocate memory for PID handle
-    PID_HandleTypeDef* handle = (PID_HandleTypeDef*)malloc(sizeof(PID_HandleTypeDef));
     if (handle == NULL) {
-        return VOLOOP_BAD_ALLOCATE;
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (init == NULL || init->triggerFrequency == 0U) {
+        return VOLOOP_INVALID_PARAM;
     }
 
     // handle->Init = *init;
@@ -113,25 +73,18 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef** handleOut, const
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
-    *handleOut = handle;
 
     return VOLOOP_OK;
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handleOut, const PID_InitTwoZeroTypeDef* init) {
+VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef* handle, const PID_InitTwoZeroTypeDef* init) {
     // Verify input parameter
-    if (handleOut == NULL) {
-        return VOLOOP_INVALID_PARAM;
-    }
-    if (*handleOut != NULL || init == NULL || init->triggerFrequency == 0U) {
-        return VOLOOP_INVALID_PARAM;
-    }
-
-    // Allocate memory for PID handle
-    PID_HandleTypeDef* handle = (PID_HandleTypeDef*)malloc(sizeof(PID_HandleTypeDef));
     if (handle == NULL) {
-        return VOLOOP_BAD_ALLOCATE;
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (init == NULL || init->triggerFrequency == 0U) {
+        return VOLOOP_INVALID_PARAM;
     }
 
     // handle->Init = *init;
@@ -141,21 +94,23 @@ VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef** handleOut, const
     handle->Integral = 0.0f;
     handle->PreviousError = 0.0f;
     handle->State = PID_UnSaturated;
-    *handleOut = handle;
 
     return VOLOOP_OK;
 }
 
 
-VOLOOP_StatusTypeDef VOLOOP_PID_DeInit(PID_HandleTypeDef** handleOut) {
-    if (handleOut == NULL) {
+VOLOOP_StatusTypeDef VOLOOP_PID_DeInit(PID_HandleTypeDef* handle) {
+    if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-	if (*handleOut == NULL){
-		return VOLOOP_INVALID_PARAM;
-	}
-    free(*handleOut);
-    *handleOut = NULL;
+
+    handle->KpDiscrete = 0.0f;
+    handle->KiDiscrete = 0.0f;
+    handle->KdDiscrete = 0.0f;
+    handle->Integral = 0.0f;
+    handle->PreviousError = 0.0f;
+    handle->State = PID_ERROR;
+
     return VOLOOP_OK;
 }
 
@@ -216,30 +171,36 @@ float VOLOOP_PID_ComputeConditional(PID_HandleTypeDef* handle,
         return 0.0f;
     }
     float error = setpoint - measurement;
-	float newIntegral = handle->Integral + error;
-	float derivative = error - handle->PreviousError;
-	float output = (handle->KpDiscrete * error) + (handle->KiDiscrete * newIntegral) + (handle->KdDiscrete * derivative);
+    float derivative = error - handle->PreviousError;
 
-    if (output > outputMax){
-        output = outputMax; 
-    } else if (output < outputMin) {
-        output = outputMin;
-    }
+    // 1) Tentatively integrate, then compute the *raw* (pre-clamp) output.
+    float newIntegral = handle->Integral + error;
+    float rawOutput = (handle->KpDiscrete * error)
+                    + (handle->KiDiscrete * newIntegral)
+                    + (handle->KdDiscrete * derivative);
 
-    // Anti-windup
-    if (output >= outputMax && error > 0.0f){
-        newIntegral = handle->Integral; 
+    // 2) Conditional integration (anti-windup): decide on the raw output,
+    //    *before* clamping. Freeze the integral only when the output is
+    //    saturated AND the error would drive it further into saturation.
+    if (rawOutput > outputMax && error > 0.0f) {
+        newIntegral = handle->Integral;        // hold integral, no windup
         handle->State = PID_UpperSaturated;
-    } else if (output <= outputMin && error < 0.0f) {
-        newIntegral = handle->Integral; 
+    } else if (rawOutput < outputMin && error < 0.0f) {
+        newIntegral = handle->Integral;        // hold integral, no windup
         handle->State = PID_LowerSaturated;
     } else {
-        handle->State = PID_UnSaturated;
+        handle->State = PID_UnSaturated;        // free to integrate
     }
     handle->Integral = newIntegral;
     handle->PreviousError = error;
 
-    return output;
+    // 3) Strict output limiting: the returned value is always within range.
+    if (rawOutput > outputMax) {
+        return outputMax;
+    } else if (rawOutput < outputMin) {
+        return outputMin;
+    }
+    return rawOutput;
 }
 
 float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
@@ -247,7 +208,7 @@ float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
                                 float measurement,
                                 float outputMin,
                                 float outputMax,
-                                float antiWindupGain){
+                                float Kb){
     if (handle == NULL) {
         return 0.0f;
     }
@@ -260,11 +221,11 @@ float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle,
     // Anti-windup back-calculation
     if (rawOutput > outputMax) {
         output = outputMax;
-        handle->Integral += error + antiWindupGain * (outputMax - rawOutput);
+        handle->Integral += error + Kb * (outputMax - rawOutput);
         handle->State = PID_UpperSaturated;
     } else if (rawOutput < outputMin) {
         output = outputMin;
-        handle->Integral += error + antiWindupGain * (outputMin - rawOutput);
+        handle->Integral += error + Kb * (outputMin - rawOutput);
         handle->State = PID_LowerSaturated;
     } else {
         handle->Integral += error; 
