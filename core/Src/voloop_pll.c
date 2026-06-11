@@ -4,17 +4,6 @@
 #define PLL_LOCK_PHASE_ERR_THRESHOLD 1.0f
 #define PLL_LOCK_FREQ_ERR_THRESHOLD 3.0f
 
-struct PLL_HandleTypeDef {
-    PLL_InitTypeDef Init;
-    PID_HandleTypeDef LoopFilter;
-	NCO_HandleTypeDef NCO;
-    PLL_StateTypeDef State;
-    float InputValue;
-    int32_t PhaseQ31;
-    float Frequency;
-    PLL_LockStateTypeDef LockState;
-};
-
 VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTypeDef* init) {
     // Verify input parameters
     if (handle == NULL

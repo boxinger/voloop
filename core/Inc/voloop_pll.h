@@ -24,7 +24,16 @@ typedef enum {
     PLL_LOCKED
 } PLL_LockStateTypeDef;
 
-typedef struct PLL_HandleTypeDef PLL_HandleTypeDef;
+typedef struct {
+    PLL_InitTypeDef Init;
+    PID_HandleTypeDef LoopFilter;
+	NCO_HandleTypeDef NCO;
+    PLL_StateTypeDef State;
+    float InputValue;
+    int32_t PhaseQ31;
+    float Frequency;
+    PLL_LockStateTypeDef LockState;
+} PLL_HandleTypeDef;
 
 VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTypeDef* init);
 VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef* handle);
