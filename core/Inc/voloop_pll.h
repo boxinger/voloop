@@ -27,7 +27,7 @@ typedef enum {
 typedef struct {
     PLL_InitTypeDef Init;
     PID_HandleTypeDef LoopFilter;
-	NCO_HandleTypeDef NCO;
+    NCO_HandleTypeDef NCO;
     PLL_StateTypeDef State;
     float InputValue;
     int32_t PhaseQ31;
@@ -42,8 +42,8 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Stop(PLL_HandleTypeDef* handle);
 PLL_StateTypeDef VOLOOP_PLL_GetState(PLL_HandleTypeDef* handle);
 
 PLL_LockStateTypeDef VOLOOP_PLL_IsLocked(PLL_HandleTypeDef* handle);
-int32_t VOLOOP_PLL_GetPhaseQ31(PLL_HandleTypeDef* handle);  // range: -2^31 to 2^31-1
-float VOLOOP_PLL_GetRad(PLL_HandleTypeDef* handle);  // range: [-pi, pi)
+int32_t VOLOOP_PLL_GetPhaseQ31(PLL_HandleTypeDef* handle); // range: -2^31 to 2^31-1
+float VOLOOP_PLL_GetRad(PLL_HandleTypeDef* handle);        // range: [-pi, pi)
 float VOLOOP_PLL_GetFrequency(PLL_HandleTypeDef* handle);
 
 VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle);

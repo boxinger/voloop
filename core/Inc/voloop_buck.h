@@ -17,19 +17,19 @@ typedef struct {
     PID_InitTypeDef* InductorCurrentPIDInit;
 } Buck_InitTypeDef;
 
-typedef enum{
+typedef enum {
     BUCK_ERROR = 0U,
     BUCK_DISABLED,
     BUCK_CVMODE,
     BUCK_CCMODE
-}Buck_StateTypeDef;
+} Buck_StateTypeDef;
 
-typedef enum{
+typedef enum {
     BUCK_INVALID = 0U,
     BUCK_NOERROR,
     BUCK_OCP,
     BUCK_OVP
-}Buck_FaultCodeTypeDef;
+} Buck_FaultCodeTypeDef;
 
 typedef struct {
     Buck_InitTypeDef Init;
@@ -40,7 +40,7 @@ typedef struct {
     float TargetOutputVoltage;
     float MaxInductorCurrent;
     float Duty;
-}Buck_HandleTypeDef;
+} Buck_HandleTypeDef;
 
 #define BUCK_OVTHRESHOLD 50.0f
 #define BUCK_OCTHRESHOLD 5.0f
@@ -60,6 +60,5 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_ClearFaultCode(Buck_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_Buck_SetValue(Buck_HandleTypeDef* handle, float Voltage, float Current);
 float VOLOOP_Buck_GetDuty(Buck_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle);
-
 
 #endif /* VOLOOP_BUCK_H */

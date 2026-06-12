@@ -88,5 +88,4 @@ VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandlerTypeDef* handle, float
 
 float VOLOOP_FOF_Compute(FOF_HandlerTypeDef* handle, float input);
 
-
 #endif

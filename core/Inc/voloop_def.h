@@ -32,7 +32,6 @@ typedef enum {
     VOLOOP_TIMEOUT
 } VOLOOP_StatusTypeDef;
 
-
 float VOLOOP_DEF_ClampFloat(float value, float min, float max);
 
 float VOLOOP_DEF_Q31ToRad(int32_t value);
@@ -41,6 +40,5 @@ int32_t VOLOOP_DEF_RadToQ31(float value);
 // Q1.31 phase look-up table
 float VOLOOP_DEF_SINQ31(int32_t phaseQ31);
 float VOLOOP_DEF_COSQ31(int32_t phaseQ31);
-
 
 #endif /* VOLOOP_DEF_H */
