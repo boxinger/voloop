@@ -1,13 +1,18 @@
 #include "voloop_fof.h"
 
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigDiscrete(FOF_HandlerTypeDef* handle, const FOF_InitDiscreteTypeDef* init);
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigContinue(FOF_HandlerTypeDef* handle, const FOF_InitContinueTypeDef* init);
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLowPass(FOF_HandlerTypeDef* handle, const FOF_InitLowPassTypeDef* init);
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigHighPass(FOF_HandlerTypeDef* handle, const FOF_InitHighPassTypeDef* init);
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLeadLag(FOF_HandlerTypeDef* handle, const FOF_InitLeadLagTypeDef* init);
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigDiscrete(FOF_HandlerTypeDef* handle,
+                                                      const FOF_InitDiscreteTypeDef* init);
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigContinue(FOF_HandlerTypeDef* handle,
+                                                      const FOF_InitContinueTypeDef* init);
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLowPass(FOF_HandlerTypeDef* handle,
+                                                     const FOF_InitLowPassTypeDef* init);
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigHighPass(FOF_HandlerTypeDef* handle,
+                                                      const FOF_InitHighPassTypeDef* init);
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLeadLag(FOF_HandlerTypeDef* handle,
+                                                     const FOF_InitLeadLagTypeDef* init);
 
-VOLOOP_StatusTypeDef VOLOOP_FOF_Init(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init){
-    if(handle == NULL || init == NULL){
+VOLOOP_StatusTypeDef VOLOOP_FOF_Init(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -31,15 +36,15 @@ VOLOOP_StatusTypeDef VOLOOP_FOF_Init(FOF_HandlerTypeDef* handle, const FOF_InitT
         default:
             return VOLOOP_INVALID_PARAM;
     }
-    if(status != VOLOOP_OK){
+    if (status != VOLOOP_OK) {
         return status;
     }
     return VOLOOP_FOF_Reset(handle);
 }
 
-
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigDiscrete(FOF_HandlerTypeDef* handle, const FOF_InitDiscreteTypeDef* init){
-    if(handle == NULL || init == NULL){
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigDiscrete(FOF_HandlerTypeDef* handle,
+                                                      const FOF_InitDiscreteTypeDef* init) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -50,12 +55,12 @@ static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigDiscrete(FOF_HandlerTypeDef* handle
     return VOLOOP_OK;
 }
 
-
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigContinue(FOF_HandlerTypeDef* handle, const FOF_InitContinueTypeDef* init){
-    if(handle == NULL || init == NULL){
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigContinue(FOF_HandlerTypeDef* handle,
+                                                      const FOF_InitContinueTypeDef* init) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if(init->triggerFrequency <= 0.0f){
+    if (init->triggerFrequency <= 0.0f) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -74,27 +79,28 @@ static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigContinue(FOF_HandlerTypeDef* handle
     */
     float T = 1.0f / init->triggerFrequency;
     float den = (init->a1 * T) + (2.0f * init->a0);
-    if(den == 0.0f){
+    if (den == 0.0f) {
         return VOLOOP_INVALID_PARAM;
     }
-    handle->b0 = ( (init->b1 * T) + (2.0f * init->b0) ) / den * init->K;
-    handle->b1 = ( (init->b1 * T) - (2.0f * init->b0) ) / den * init->K;
-    handle->a1 = ( (init->a1 * T) - (2.0f * init->a0) ) / den;
+    handle->b0 = ((init->b1 * T) + (2.0f * init->b0)) / den * init->K;
+    handle->b1 = ((init->b1 * T) - (2.0f * init->b0)) / den * init->K;
+    handle->a1 = ((init->a1 * T) - (2.0f * init->a0)) / den;
 
     return VOLOOP_OK;
 }
 
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLowPass(FOF_HandlerTypeDef* handle, const FOF_InitLowPassTypeDef* init){
-    if(handle == NULL || init == NULL){
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLowPass(FOF_HandlerTypeDef* handle,
+                                                     const FOF_InitLowPassTypeDef* init) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if(init->cutoffFrequency <= 0.0f || init->triggerFrequency <= 0.0f){
+    if (init->cutoffFrequency <= 0.0f || init->triggerFrequency <= 0.0f) {
         return VOLOOP_INVALID_PARAM;
     }
 
     FOF_InitContinueTypeDef continueInit;
     float OmegaC = VOLOOP_TwoPi * init->cutoffFrequency;
-    continueInit.K  = 1.0f;
+    continueInit.K = 1.0f;
     continueInit.b0 = 0.0f;
     continueInit.b1 = OmegaC;
     continueInit.a0 = 1.0f;
@@ -104,18 +110,18 @@ static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLowPass(FOF_HandlerTypeDef* handle,
     return VOLOOP_FOF_ConfigContinue(handle, &continueInit);
 }
 
-
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigHighPass(FOF_HandlerTypeDef* handle, const FOF_InitHighPassTypeDef* init){
-    if(handle == NULL || init == NULL){
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigHighPass(FOF_HandlerTypeDef* handle,
+                                                      const FOF_InitHighPassTypeDef* init) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if(init->cutoffFrequency <= 0.0f || init->triggerFrequency <= 0.0f){
+    if (init->cutoffFrequency <= 0.0f || init->triggerFrequency <= 0.0f) {
         return VOLOOP_INVALID_PARAM;
     }
 
     FOF_InitContinueTypeDef continueInit;
     float OmegaC = VOLOOP_TwoPi * init->cutoffFrequency;
-    continueInit.K  = 1.0f;
+    continueInit.K = 1.0f;
     continueInit.b0 = 1.0f;
     continueInit.b1 = 0.0f;
     continueInit.a0 = 1.0f;
@@ -125,21 +131,19 @@ static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigHighPass(FOF_HandlerTypeDef* handle
     return VOLOOP_FOF_ConfigContinue(handle, &continueInit);
 }
 
-
-static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLeadLag(FOF_HandlerTypeDef* handle, const FOF_InitLeadLagTypeDef* init){
-    if(handle == NULL || init == NULL){
+static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLeadLag(FOF_HandlerTypeDef* handle,
+                                                     const FOF_InitLeadLagTypeDef* init) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if(init->triggerFrequency <= 0.0f
-        || init->pole <= 0.0f
-        || init->zero <= 0.0f){
+    if (init->triggerFrequency <= 0.0f || init->pole <= 0.0f || init->zero <= 0.0f) {
         return VOLOOP_INVALID_PARAM;
     }
 
     FOF_InitContinueTypeDef continueInit;
     float OmegaZ = VOLOOP_TwoPi * init->zero;
     float OmegaP = VOLOOP_TwoPi * init->pole;
-    continueInit.K  = init->gain;
+    continueInit.K = init->gain;
     continueInit.b0 = 1.0f;
     continueInit.b1 = OmegaZ;
     continueInit.a0 = 1.0f;
@@ -149,17 +153,16 @@ static VOLOOP_StatusTypeDef VOLOOP_FOF_ConfigLeadLag(FOF_HandlerTypeDef* handle,
     return VOLOOP_FOF_ConfigContinue(handle, &continueInit);
 }
 
-VOLOOP_StatusTypeDef VOLOOP_FOF_DeInit(FOF_HandlerTypeDef* handle){
-    if (handle == NULL){
+VOLOOP_StatusTypeDef VOLOOP_FOF_DeInit(FOF_HandlerTypeDef* handle) {
+    if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    *handle = (FOF_HandlerTypeDef){0};
+    *handle = (FOF_HandlerTypeDef){ 0 };
     return VOLOOP_OK;
 }
 
-
-VOLOOP_StatusTypeDef VOLOOP_FOF_Reconfig(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init){
-    if(handle == NULL || init == NULL){
+VOLOOP_StatusTypeDef VOLOOP_FOF_Reconfig(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -179,9 +182,8 @@ VOLOOP_StatusTypeDef VOLOOP_FOF_Reconfig(FOF_HandlerTypeDef* handle, const FOF_I
     }
 }
 
-
-VOLOOP_StatusTypeDef VOLOOP_FOF_Reset(FOF_HandlerTypeDef* handle){
-    if(handle == NULL){
+VOLOOP_StatusTypeDef VOLOOP_FOF_Reset(FOF_HandlerTypeDef* handle) {
+    if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
     handle->x1 = 0.0f;
@@ -189,12 +191,8 @@ VOLOOP_StatusTypeDef VOLOOP_FOF_Reset(FOF_HandlerTypeDef* handle){
     return VOLOOP_OK;
 }
 
-
-VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(
-    FOF_HandlerTypeDef* handle,
-    float input,
-    float output
-) {
+VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandlerTypeDef* handle, float input,
+                                               float output) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
@@ -205,13 +203,11 @@ VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(
     return VOLOOP_OK;
 }
 
-
-
-float VOLOOP_FOF_Compute(FOF_HandlerTypeDef* handle, float input){
-    if(handle == NULL){
+float VOLOOP_FOF_Compute(FOF_HandlerTypeDef* handle, float input) {
+    if (handle == NULL) {
         return 0.0f; // or some error code
     }
-    
+
     // Difference equation:
     // H(z) = (b0 + b1*z^-1) / (1 + a1*z^-1)
     // y[n] = b0*x[n] + b1*x[n-1] - a1*y[n-1]

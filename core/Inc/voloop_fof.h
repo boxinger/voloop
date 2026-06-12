@@ -84,7 +84,8 @@ VOLOOP_StatusTypeDef VOLOOP_FOF_DeInit(FOF_HandlerTypeDef* handle);
 
 VOLOOP_StatusTypeDef VOLOOP_FOF_Reconfig(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init);
 VOLOOP_StatusTypeDef VOLOOP_FOF_Reset(FOF_HandlerTypeDef* handle);
-VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandlerTypeDef* handle, float input, float output);
+VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandlerTypeDef* handle, float input,
+                                               float output);
 
 float VOLOOP_FOF_Compute(FOF_HandlerTypeDef* handle, float input);
 

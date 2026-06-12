@@ -21,25 +21,24 @@ typedef struct {
     const NCO_InitTypeDef* NCOInit;
 } OffInv_InitTypeDef;
 
-typedef enum{
+typedef enum {
     OFFINV_ERROR = 0U,
     OFFINV_DISABLED,
     OFFINV_RUNNING,
 } OffInv_StateTypeDef;
 
-typedef enum{
+typedef enum {
     OFFINV_INVALID = 0U,
     OFFINV_NOERROR,
     OFFINV_OCP,
     OFFINV_OVP
-}OffInv_FaultCodeTypeDef;
+} OffInv_FaultCodeTypeDef;
 
 typedef struct {
     OffInv_StateTypeDef State;
     OffInv_FaultCodeTypeDef FaultCode;
     float Duty;
 } OffInv_HandleTypeDef;
-
 
 #define OFFINV_MAX_DUTY 0.90f
 #define OFFINV_MIN_DUTY 0.10f

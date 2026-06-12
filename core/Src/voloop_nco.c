@@ -1,8 +1,8 @@
 #include "voloop_nco.h"
 #include "voloop_def.h"
 
-#define NCO_PHASE_ACCUMULATOR_BITS      32U
-#define NCO_U32_SCALE                   ((float)(1ULL << NCO_PHASE_ACCUMULATOR_BITS))
+#define NCO_PHASE_ACCUMULATOR_BITS 32U
+#define NCO_U32_SCALE ((float)(1ULL << NCO_PHASE_ACCUMULATOR_BITS))
 
 static int32_t NCO_RadToQ31(float rad) {
     return VOLOOP_DEF_RadToQ31(rad);
@@ -14,28 +14,24 @@ static float NCO_Q31ToRad(int32_t phaseQ31) {
 
 VOLOOP_StatusTypeDef VOLOOP_NCO_Init(NCO_HandleTypeDef* handle, const NCO_InitTypeDef* init) {
     // Verify input parameters
-    if (handle == NULL
-        || init == NULL
-    ) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (init->triggerFrequency == 0U 
-        || init->initialFrequency <= 0.0f
-        || init->initialFrequency >= (float)init->triggerFrequency
-        || init->initialRad < -VOLOOP_Pi
-        || init->initialRad >= VOLOOP_Pi
-    ) {
+    if (init->triggerFrequency == 0U || init->initialFrequency <= 0.0f ||
+        init->initialFrequency >= (float)init->triggerFrequency || init->initialRad < -VOLOOP_Pi ||
+        init->initialRad >= VOLOOP_Pi) {
         return VOLOOP_INVALID_PARAM;
     }
 
     // Load initialization parameters
-    (*handle) = (NCO_HandleTypeDef){0};
+    (*handle) = (NCO_HandleTypeDef){ 0 };
     handle->Init = *init;
     handle->State = NCO_STOPPED;
     handle->Frequency = init->initialFrequency;
     handle->TriggerFrequencyInv = 1.0f / (float)init->triggerFrequency;
     handle->PhaseQ31 = NCO_RadToQ31(init->initialRad);
-    handle->PhaseStepQ31 = (uint32_t)(NCO_U32_SCALE * handle->Frequency * handle->TriggerFrequencyInv);
+    handle->PhaseStepQ31 =
+        (uint32_t)(NCO_U32_SCALE * handle->Frequency * handle->TriggerFrequencyInv);
 
     return VOLOOP_OK;
 }
@@ -46,7 +42,7 @@ VOLOOP_StatusTypeDef VOLOOP_NCO_DeInit(NCO_HandleTypeDef* handle) {
         return VOLOOP_INVALID_PARAM;
     }
 
-    *handle = (NCO_HandleTypeDef){0};
+    *handle = (NCO_HandleTypeDef){ 0 };
     return VOLOOP_OK;
 }
 
@@ -107,7 +103,8 @@ VOLOOP_StatusTypeDef VOLOOP_NCO_SetFrequency(NCO_HandleTypeDef* handle, float fr
     }
 
     handle->Frequency = frequency;
-    handle->PhaseStepQ31 = (uint32_t)(NCO_U32_SCALE * handle->Frequency * handle->TriggerFrequencyInv);
+    handle->PhaseStepQ31 =
+        (uint32_t)(NCO_U32_SCALE * handle->Frequency * handle->TriggerFrequencyInv);
     return VOLOOP_OK;
 }
 

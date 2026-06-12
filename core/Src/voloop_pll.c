@@ -6,29 +6,24 @@
 
 VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTypeDef* init) {
     // Verify input parameters
-    if (handle == NULL
-        || init == NULL
-    ) {
+    if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (init->InitFunc == NULL
-        || init->DeInitFunc == NULL
-        || init->GetInputValue == NULL
-        || init->LoopFilterInit == NULL
-        || init->NCOInit == NULL) {
+    if (init->InitFunc == NULL || init->DeInitFunc == NULL || init->GetInputValue == NULL ||
+        init->LoopFilterInit == NULL || init->NCOInit == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
     // Load initialization parameters
-    (*handle) = (PLL_HandleTypeDef){0};
+    (*handle) = (PLL_HandleTypeDef){ 0 };
     handle->Init = *init;
     handle->State = PLL_STOPPED;
     handle->InputValue = 0.0f;
     handle->PhaseQ31 = 0;
     handle->Frequency = 0.0f;
     handle->LockState = PLL_UNLOCKED;
-    handle->LoopFilter = (PID_HandleTypeDef){0};
-    handle->NCO = (NCO_HandleTypeDef){0};
+    handle->LoopFilter = (PID_HandleTypeDef){ 0 };
+    handle->NCO = (NCO_HandleTypeDef){ 0 };
 
     // Call user-defined initialization function
     init->InitFunc();
@@ -50,7 +45,6 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTy
     return VOLOOP_OK;
 }
 
-
 VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef* handle) {
     // Verify input parameter
     if (handle == NULL) {
@@ -64,10 +58,9 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef* handle) {
     VOLOOP_PID_DeInit(&(handle->LoopFilter));
     VOLOOP_NCO_DeInit(&(handle->NCO));
 
-    *handle = (PLL_HandleTypeDef){0};
+    *handle = (PLL_HandleTypeDef){ 0 };
     return VOLOOP_OK;
 }
-
 
 VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle) {
     if (handle == NULL) {
@@ -91,7 +84,6 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle) {
     return VOLOOP_OK;
 }
 
-
 VOLOOP_StatusTypeDef VOLOOP_PLL_Stop(PLL_HandleTypeDef* handle) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
@@ -112,7 +104,6 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Stop(PLL_HandleTypeDef* handle) {
     return VOLOOP_OK;
 }
 
-
 PLL_StateTypeDef VOLOOP_PLL_GetState(PLL_HandleTypeDef* handle) {
     if (handle == NULL) {
         return PLL_ERROR;
@@ -120,14 +111,12 @@ PLL_StateTypeDef VOLOOP_PLL_GetState(PLL_HandleTypeDef* handle) {
     return handle->State;
 }
 
-
 PLL_LockStateTypeDef VOLOOP_PLL_IsLocked(PLL_HandleTypeDef* handle) {
     if (handle == NULL) {
         return PLL_UNLOCKED;
     }
     return handle->LockState;
 }
-
 
 int32_t VOLOOP_PLL_GetPhaseQ31(PLL_HandleTypeDef* handle) {
     if (handle == NULL) {
@@ -150,7 +139,6 @@ float VOLOOP_PLL_GetFrequency(PLL_HandleTypeDef* handle) {
     return handle->Frequency;
 }
 
-
 VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
@@ -170,7 +158,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
 
     // 3) Update NCO frequency and phase
     // float nextFrequency = VOLOOP_NCO_GetFrequency(handle->NCO) + frequencyCorrection;
-	float nextFrequency = handle->Init.NCOInit->initialFrequency + frequencyCorrection;
+    float nextFrequency = handle->Init.NCOInit->initialFrequency + frequencyCorrection;
     volatile VOLOOP_StatusTypeDef status = VOLOOP_NCO_SetFrequency(&(handle->NCO), nextFrequency);
     if (status != VOLOOP_OK) {
         handle->State = PLL_ERROR;
@@ -190,8 +178,8 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle) {
     handle->Frequency = VOLOOP_NCO_GetFrequency(&(handle->NCO));
 
     // 4) Simple lock detection
-    if ((fabsf(phaseError) < PLL_LOCK_PHASE_ERR_THRESHOLD)
-        && (fabsf(frequencyCorrection) < PLL_LOCK_FREQ_ERR_THRESHOLD)) {
+    if ((fabsf(phaseError) < PLL_LOCK_PHASE_ERR_THRESHOLD) &&
+        (fabsf(frequencyCorrection) < PLL_LOCK_FREQ_ERR_THRESHOLD)) {
         handle->LockState = PLL_LOCKED;
     } else {
         handle->LockState = PLL_UNLOCKED;

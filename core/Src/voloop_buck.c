@@ -1,21 +1,14 @@
 #include "voloop_buck.h"
 
-
 VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef* handle, Buck_InitTypeDef* init) {
     // Verify input parameters
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (init == NULL 
-        || init->InitFunc == NULL
-        || init->DeInitFunc == NULL
-        || init->Start == NULL
-        || init->Stop == NULL
-        || init->SetDuty == NULL
-        || init->GetOutputVoltage == NULL
-        || init->GetInductorCurrent == NULL
-        || init->OutPutVoltagePIDInit == NULL
-        || init->InductorCurrentPIDInit == NULL) {
+    if (init == NULL || init->InitFunc == NULL || init->DeInitFunc == NULL || init->Start == NULL ||
+        init->Stop == NULL || init->SetDuty == NULL || init->GetOutputVoltage == NULL ||
+        init->GetInductorCurrent == NULL || init->OutPutVoltagePIDInit == NULL ||
+        init->InductorCurrentPIDInit == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -26,8 +19,8 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef* handle, Buck_InitTypeD
     handle->Duty = 0.0f;
     handle->State = BUCK_DISABLED;
     handle->FaultCode = BUCK_NOERROR;
-    handle->OutPutVoltagePID = (PID_HandleTypeDef){0};
-    handle->InductorCurrentPID = (PID_HandleTypeDef){0};
+    handle->OutPutVoltagePID = (PID_HandleTypeDef){ 0 };
+    handle->InductorCurrentPID = (PID_HandleTypeDef){ 0 };
 
     // Call user-defined initialization function
     init->InitFunc();
@@ -47,7 +40,6 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef* handle, Buck_InitTypeD
 
     return VOLOOP_OK;
 }
-
 
 VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle) {
     // Verify input parameter
@@ -69,41 +61,37 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_DeInit(Buck_HandleTypeDef* handle) {
     return VOLOOP_OK;
 }
 
-
 VOLOOP_StatusTypeDef VOLOOP_Buck_Start(Buck_HandleTypeDef* handle) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
-    if (handle->State == BUCK_ERROR
-        || handle->State == BUCK_CVMODE
-        || handle->State == BUCK_CCMODE) {
-        return VOLOOP_INVALID_STATE; 
+    if (handle->State == BUCK_ERROR || handle->State == BUCK_CVMODE ||
+        handle->State == BUCK_CCMODE) {
+        return VOLOOP_INVALID_STATE;
     }
-    
+
     VOLOOP_PID_Reset(&(handle->OutPutVoltagePID));
     VOLOOP_PID_Reset(&(handle->InductorCurrentPID));
     handle->State = BUCK_CVMODE; // Default to CV mode when starting
     handle->Init.Start();
-    
+
     return VOLOOP_OK;
 }
-
 
 VOLOOP_StatusTypeDef VOLOOP_Buck_Stop(Buck_HandleTypeDef* handle) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    
+
     if (handle->State == BUCK_ERROR) {
         return VOLOOP_INVALID_STATE;
     }
-    
+
     handle->Init.Stop();
     handle->State = BUCK_DISABLED;
     return VOLOOP_OK;
 }
-
 
 Buck_StateTypeDef VOLOOP_Buck_GetState(Buck_HandleTypeDef* handle) {
     if (handle == NULL) {
@@ -119,13 +107,11 @@ Buck_FaultCodeTypeDef VOLOOP_Buck_GetFaultCode(Buck_HandleTypeDef* handle) {
     return handle->FaultCode;
 }
 
-
 VOLOOP_StatusTypeDef VOLOOP_Buck_ClearFaultCode(Buck_HandleTypeDef* handle) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (handle->State != BUCK_ERROR
-        && handle->State != BUCK_DISABLED) {
+    if (handle->State != BUCK_ERROR && handle->State != BUCK_DISABLED) {
         return VOLOOP_INVALID_STATE;
     }
     handle->FaultCode = BUCK_NOERROR;
@@ -133,8 +119,8 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_ClearFaultCode(Buck_HandleTypeDef* handle) {
     return VOLOOP_OK;
 }
 
-
-VOLOOP_StatusTypeDef VOLOOP_Buck_SetValue(Buck_HandleTypeDef* handle, float Voltage, float Current) {
+VOLOOP_StatusTypeDef VOLOOP_Buck_SetValue(Buck_HandleTypeDef* handle, float Voltage,
+                                          float Current) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
@@ -143,14 +129,12 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_SetValue(Buck_HandleTypeDef* handle, float Volt
     return VOLOOP_OK;
 }
 
-
 float VOLOOP_Buck_GetDuty(Buck_HandleTypeDef* handle) {
     if (handle == NULL) {
         return 0.0f;
     }
     return handle->Duty;
 }
-
 
 VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle) {
     // Verify input parameter
@@ -159,9 +143,9 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle) {
     }
 
     if (handle->State == BUCK_ERROR) {
-        return VOLOOP_INVALID_STATE; 
+        return VOLOOP_INVALID_STATE;
     } else if (handle->State == BUCK_DISABLED) {
-        return VOLOOP_INVALID_STATE; 
+        return VOLOOP_INVALID_STATE;
     }
 
     //Get necessary parameters
@@ -169,13 +153,13 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle) {
     float presentCurrent = handle->Init.GetInductorCurrent();
 
     //Protection
-    if (presentCurrent > BUCK_OCTHRESHOLD){
+    if (presentCurrent > BUCK_OCTHRESHOLD) {
         VOLOOP_Buck_Stop(handle);
         handle->State = BUCK_ERROR;
         handle->FaultCode = BUCK_OCP;
         return VOLOOP_ERROR;
     }
-    if  (presentVoltage > BUCK_OVTHRESHOLD){
+    if (presentVoltage > BUCK_OVTHRESHOLD) {
         VOLOOP_Buck_Stop(handle);
         handle->State = BUCK_ERROR;
         handle->FaultCode = BUCK_OVP;
@@ -183,22 +167,22 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle) {
     }
 
     //Compute target inductor current based on output voltage error, with anti-windup
-    float targetInductorCurrent = VOLOOP_PID_ComputeConditional(&(handle->OutPutVoltagePID), handle->TargetOutputVoltage, presentVoltage, 0.0f, handle->MaxInductorCurrent);
-    
-    if (VOLOOP_PID_GetState(&(handle->OutPutVoltagePID)) == PID_UpperSaturated){
+    float targetInductorCurrent =
+        VOLOOP_PID_ComputeConditional(&(handle->OutPutVoltagePID), handle->TargetOutputVoltage,
+                                      presentVoltage, 0.0f, handle->MaxInductorCurrent);
+
+    if (VOLOOP_PID_GetState(&(handle->OutPutVoltagePID)) == PID_UpperSaturated) {
         handle->State = BUCK_CCMODE;
     } else {
         handle->State = BUCK_CVMODE;
     }
-    
-    float duty = VOLOOP_PID_ComputeConditional(&(handle->InductorCurrentPID), targetInductorCurrent, presentCurrent, BUCK_MIN_DUTY, BUCK_MAX_DUTY);
+
+    float duty = VOLOOP_PID_ComputeConditional(&(handle->InductorCurrentPID), targetInductorCurrent,
+                                               presentCurrent, BUCK_MIN_DUTY, BUCK_MAX_DUTY);
 
     // Set duty cycle
     handle->Duty = duty;
     handle->Init.SetDuty(duty);
 
     return VOLOOP_OK;
-
 }
-
-
