@@ -6,7 +6,7 @@
 #include "voloop_buck.h"
 #include "voloop_pll.h"
 #include "voloop_nco.h"
-#include "voloop_inv.h"
+#include "voloop_offinv.h"
 #include "voloop_fof.h"
 
 #endif /* VOLOOP_H */

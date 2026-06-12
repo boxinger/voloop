@@ -41,4 +41,9 @@ int32_t VOLOOP_DEF_RadToQ31(float value);
 float VOLOOP_DEF_SINQ31(int32_t phaseQ31);
 float VOLOOP_DEF_COSQ31(int32_t phaseQ31);
 
+typedef enum {
+    VOLOOP_PWM_DISABLED = 0U,
+    VOLOOP_PWM_ENABLE,
+} VOLOOP_DEF_PwmStateTypeDef;
+
 #endif /* VOLOOP_DEF_H */
