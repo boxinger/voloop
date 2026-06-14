@@ -4,17 +4,21 @@
 
 #include "voloop_pid.h"
 #include "voloop_nco.h"
+#include "voloop_def.h"
 
 typedef struct {
-    void (*InitFunc)(void);
-    void (*DeInitFunc)(void);
-    float (*GetInputValue)(void);
+    float InputVoltage;
+} PLL_InputTypeDef;
+
+typedef struct {
     const PID_InitTypeDef* LoopFilterInit;
     const NCO_InitTypeDef* NCOInit;
+    // const VOLOOP_StatusTypeDef (*GetInputParam)(PLL_InputTypeDef* input);
 } PLL_InitTypeDef;
 
 typedef enum {
-    PLL_ERROR = 0U,
+    PLL_RESET = 0U,
+    PLL_ERROR,
     PLL_STOPPED,
     PLL_RUNNING
 } PLL_StateTypeDef;
@@ -25,11 +29,10 @@ typedef enum {
 } PLL_LockStateTypeDef;
 
 typedef struct {
-    PLL_InitTypeDef Init;
     PID_HandleTypeDef LoopFilter;
     NCO_HandleTypeDef NCO;
+    float NominalFrequency;
     PLL_StateTypeDef State;
-    float InputValue;
     int32_t PhaseQ31;
     float Frequency;
     PLL_LockStateTypeDef LockState;
@@ -39,13 +42,13 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTy
 VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PLL_Stop(PLL_HandleTypeDef* handle);
-PLL_StateTypeDef VOLOOP_PLL_GetState(PLL_HandleTypeDef* handle);
+PLL_StateTypeDef VOLOOP_PLL_GetState(const PLL_HandleTypeDef* handle);
 
-PLL_LockStateTypeDef VOLOOP_PLL_IsLocked(PLL_HandleTypeDef* handle);
-int32_t VOLOOP_PLL_GetPhaseQ31(PLL_HandleTypeDef* handle); // range: -2^31 to 2^31-1
-float VOLOOP_PLL_GetRad(PLL_HandleTypeDef* handle);        // range: [-pi, pi)
-float VOLOOP_PLL_GetFrequency(PLL_HandleTypeDef* handle);
+PLL_LockStateTypeDef VOLOOP_PLL_IsLocked(const PLL_HandleTypeDef* handle);
+int32_t VOLOOP_PLL_GetPhaseQ31(const PLL_HandleTypeDef* handle); // range: -2^31 to 2^31-1
+float VOLOOP_PLL_GetRad(const PLL_HandleTypeDef* handle);        // range: [-pi, pi)
+float VOLOOP_PLL_GetFrequency(const PLL_HandleTypeDef* handle);
 
-VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle, const PLL_InputTypeDef* input);
 
 #endif
