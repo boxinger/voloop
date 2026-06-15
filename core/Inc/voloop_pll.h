@@ -13,6 +13,7 @@ typedef struct {
 typedef struct {
     const PID_InitTypeDef* LoopFilterInit;
     const NCO_InitTypeDef* NCOInit;
+    const float triggerFrequency;
     // const VOLOOP_StatusTypeDef (*GetInputParam)(PLL_InputTypeDef* input);
 } PLL_InitTypeDef;
 
@@ -25,17 +26,29 @@ typedef enum {
 
 typedef enum {
     PLL_UNLOCKED = 0U,
-    PLL_LOCKED
+    PLL_LOCKED,
+    PLL_MISLOCKED
 } PLL_LockStateTypeDef;
 
 typedef struct {
     PID_HandleTypeDef LoopFilter;
     NCO_HandleTypeDef NCO;
     float NominalFrequency;
-    PLL_StateTypeDef State;
+    float triggerFrequency;
+
+    // Normalize
+    float dcAlpha;
+    float squareAlpha;
+    float dcValue;
+    float squareAvg;
+    float peakValue;
+    float peakValueInv;
+    uint8_t InvPeakUpdateCounter;
+
     int32_t PhaseQ31;
     float Frequency;
     PLL_LockStateTypeDef LockState;
+    PLL_StateTypeDef State;
 } PLL_HandleTypeDef;
 
 VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTypeDef* init);
