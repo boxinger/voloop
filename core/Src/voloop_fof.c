@@ -191,14 +191,14 @@ VOLOOP_StatusTypeDef VOLOOP_FOF_Reset(FOF_HandleTypeDef* handle) {
     return VOLOOP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandleTypeDef* handle, float input,
-                                               float output) {
+VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandleTypeDef* handle, float x1,
+                                               float y1) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
-    handle->x1 = input;
-    handle->y1 = output;
+    handle->x1 = x1;
+    handle->y1 = y1;
 
     return VOLOOP_OK;
 }
