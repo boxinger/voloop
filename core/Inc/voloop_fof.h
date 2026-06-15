@@ -77,16 +77,16 @@ typedef struct {
     // Previous input and output
     float y1;
     float x1;
-} FOF_HandlerTypeDef;
+} FOF_HandleTypeDef;
 
-VOLOOP_StatusTypeDef VOLOOP_FOF_Init(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_FOF_DeInit(FOF_HandlerTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_FOF_Init(FOF_HandleTypeDef* handle, const FOF_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_FOF_DeInit(FOF_HandleTypeDef* handle);
 
-VOLOOP_StatusTypeDef VOLOOP_FOF_Reconfig(FOF_HandlerTypeDef* handle, const FOF_InitTypeDef* init);
-VOLOOP_StatusTypeDef VOLOOP_FOF_Reset(FOF_HandlerTypeDef* handle);
-VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandlerTypeDef* handle, float input,
+VOLOOP_StatusTypeDef VOLOOP_FOF_Reconfig(FOF_HandleTypeDef* handle, const FOF_InitTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_FOF_Reset(FOF_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandleTypeDef* handle, float input,
                                                float output);
 
-float VOLOOP_FOF_Compute(FOF_HandlerTypeDef* handle, float input);
+float VOLOOP_FOF_Compute(FOF_HandleTypeDef* handle, float input);
 
 #endif
