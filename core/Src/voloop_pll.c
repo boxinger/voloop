@@ -3,8 +3,16 @@
 
 #include <math.h>
 
-#define PLL_LOCK_PHASE_ERR_THRESHOLD 1.0f
-#define PLL_LOCK_FREQ_ERR_THRESHOLD 3.0f
+#define PLL_LOCK_PHASE_ERR_THRESHOLD   1.0f  // Phase error threshold to enter LOCKED
+#define PLL_UNLOCK_PHASE_ERR_THRESHOLD 1.5f  // Phase error threshold to leave LOCKED (hysteresis)
+#define PLL_LOCK_FREQ_ERR_THRESHOLD    3.0f  // Frequency correction threshold to enter LOCKED
+#define PLL_UNLOCK_FREQ_ERR_THRESHOLD  5.0f  // Frequency correction threshold to leave LOCKED (hysteresis)
+#define PLL_FREQ_MIN                   40.0f // Allowed lock frequency window lower bound (Hz)
+#define PLL_FREQ_MAX                   70.0f // Allowed lock frequency window upper bound (Hz)
+#define PLL_SIGNAL_MIN_PEAK            0.15f // Minimum input peak to consider signal valid
+#define PLL_PEAK_EPSILON               1e-6f // Guard threshold to avoid division by zero on peak
+#define PLL_LOCK_DEBOUNCE_COUNT        50    // Consecutive lock samples required to assert LOCKED
+#define PLL_UNLOCK_DEBOUNCE_COUNT      20    // Consecutive unlock samples required to assert UNLOCKED
 #define PLL_ALPHA_MIN  0.000001f
 #define PLL_ALPHA_MAX  0.2f
 #define PLL_DC_ALPHA_CYCLES 100.0f
@@ -45,6 +53,8 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTy
     handle->State = PLL_STOPPED;
     handle->PhaseQ31 = 0;
     handle->Frequency = init->NCOInit->initialFrequency;
+    handle->LockCounter = 0;
+    handle->UnlockCounter = 0;
     handle->LockState = PLL_UNLOCKED;
     handle->LoopFilter = (PID_HandleTypeDef){ 0 };
     handle->NCO = (NCO_HandleTypeDef){ 0 };
@@ -106,6 +116,8 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle) {
     }
 
     VOLOOP_PID_Reset(&(handle->LoopFilter));
+    handle->LockCounter = 0;
+    handle->UnlockCounter = 0;
     handle->LockState = PLL_UNLOCKED;
 
     handle->State = PLL_RUNNING;
@@ -130,7 +142,51 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Stop(PLL_HandleTypeDef* handle) {
     }
 
     handle->State = PLL_STOPPED;
+    handle->LockCounter = 0;
+    handle->UnlockCounter = 0;
     handle->LockState = PLL_UNLOCKED;
+    return VOLOOP_OK;
+}
+
+VOLOOP_StatusTypeDef VOLOOP_PLL_Reset(PLL_HandleTypeDef* handle) {
+    if (handle == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    // ERROR and uninitialized (RESET) states are not allowed to reset.
+    if (handle->State == PLL_ERROR || handle->State == PLL_RESET) {
+        return VOLOOP_INVALID_STATE;
+    }
+
+    // If running, stop the NCO first (reuse its cleanup path).
+    if (handle->State == PLL_RUNNING) {
+        VOLOOP_StatusTypeDef status = VOLOOP_NCO_Stop(&(handle->NCO));
+        if (status != VOLOOP_OK) {
+            handle->State = PLL_ERROR;
+            handle->LockState = PLL_UNLOCKED;
+            return status;
+        }
+    }
+
+    // Reset loop filter and oscillator while keeping the init configuration
+    // (Kp/Ki, alpha, NominalFrequency, etc.).
+    VOLOOP_PID_Reset(&(handle->LoopFilter));
+    VOLOOP_NCO_SetFrequency(&(handle->NCO), handle->NominalFrequency);
+    VOLOOP_NCO_SetRad(&(handle->NCO), 0.0f);
+
+    // Reset PLL-level state and amplitude estimation.
+    handle->PhaseQ31 = 0;
+    handle->Frequency = handle->NominalFrequency;
+    handle->dcValue = 0.0f;
+    handle->squareAvg = 1.0f;
+    handle->peakValue = 1.0f;
+    handle->peakValueInv = 1.0f;
+    handle->InvPeakUpdateCounter = PLL_INV_PEAK_UPDATE_PERIOD;
+    handle->LockCounter = 0;
+    handle->UnlockCounter = 0;
+    handle->LockState = PLL_UNLOCKED;
+
+    // After reset the PLL returns to STOPPED; user must Start again to run.
+    handle->State = PLL_STOPPED;
     return VOLOOP_OK;
 }
 
@@ -185,10 +241,15 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle, const PLL_InputT
     if (handle->InvPeakUpdateCounter >= PLL_INV_PEAK_UPDATE_PERIOD) {
         handle->InvPeakUpdateCounter = 0;
         handle->peakValue = sqrtf(handle->squareAvg * 2.0f);
-        if (handle->peakValue < 0.1f) {
-            handle->peakValue = 0.1f;
+        if (handle->peakValue < PLL_PEAK_EPSILON) {
+            // Peak too small (or signal absent): avoid division by zero / blowup.
+            // Setting the inverse gain to 0 makes the normalized input 0, so the
+            // phase error is 0 and the loop coasts at the nominal frequency until
+            // a valid signal returns (also reported as PLL_NO_SIGNAL by lock detect).
+            handle->peakValueInv = 0.0f;
+        } else {
+            handle->peakValueInv = 1.0f / handle->peakValue;
         }
-        handle->peakValueInv = 1.0f / handle->peakValue;
     }
 
     // 1) Phase detector: input(sin) * NCO(cos)
@@ -219,13 +280,46 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle, const PLL_InputT
     handle->PhaseQ31 = VOLOOP_NCO_GetPhaseQ31(&(handle->NCO));
     handle->Frequency = VOLOOP_NCO_GetFrequency(&(handle->NCO));
 
-    // 4) Simple lock detection
-    if ((fabsf(phaseError) < PLL_LOCK_PHASE_ERR_THRESHOLD) &&
-        (fabsf(frequencyCorrection) < PLL_LOCK_FREQ_ERR_THRESHOLD)) {
-        handle->LockState = PLL_LOCKED;
-    } else {
-        handle->LockState = PLL_UNLOCKED;
+    // 4) Lock detection: signal validity -> frequency window -> debounce + hysteresis
+    if (handle->peakValue <= PLL_SIGNAL_MIN_PEAK) {
+        // Input signal is absent or too weak: cannot judge lock, avoid false LOCKED.
+        // Loop keeps running so it can re-acquire quickly once the signal returns.
+        handle->LockCounter = 0;
+        handle->UnlockCounter = 0;
+        handle->LockState = PLL_NO_SIGNAL;
+        return VOLOOP_OK;
     }
+
+    uint8_t freqInWindow =
+        (handle->Frequency >= PLL_FREQ_MIN) && (handle->Frequency <= PLL_FREQ_MAX);
+    float absPhaseError = fabsf(phaseError);
+    float absFreqCorrection = fabsf(frequencyCorrection);
+
+    uint8_t lockCondition = freqInWindow &&
+                            (absPhaseError < PLL_LOCK_PHASE_ERR_THRESHOLD) &&
+                            (absFreqCorrection < PLL_LOCK_FREQ_ERR_THRESHOLD);
+    uint8_t unlockCondition = (!freqInWindow) ||
+                              (absPhaseError >= PLL_UNLOCK_PHASE_ERR_THRESHOLD) ||
+                              (absFreqCorrection >= PLL_UNLOCK_FREQ_ERR_THRESHOLD);
+
+    if (lockCondition) {
+        handle->UnlockCounter = 0;
+        if (handle->LockCounter < PLL_LOCK_DEBOUNCE_COUNT) {
+            handle->LockCounter++;
+        }
+        if (handle->LockCounter >= PLL_LOCK_DEBOUNCE_COUNT) {
+            handle->LockState = PLL_LOCKED;
+        }
+    } else if (unlockCondition) {
+        handle->LockCounter = 0;
+        if (handle->UnlockCounter < PLL_UNLOCK_DEBOUNCE_COUNT) {
+            handle->UnlockCounter++;
+        }
+        if (handle->UnlockCounter >= PLL_UNLOCK_DEBOUNCE_COUNT) {
+            handle->LockState = PLL_UNLOCKED;
+        }
+    }
+    // else: inside the hysteresis dead-band, hold current LockState and counters.
 
     return VOLOOP_OK;
 }

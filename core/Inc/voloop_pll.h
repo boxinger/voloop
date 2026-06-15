@@ -27,7 +27,7 @@ typedef enum {
 typedef enum {
     PLL_UNLOCKED = 0U,
     PLL_LOCKED,
-    PLL_MISLOCKED
+    PLL_NO_SIGNAL
 } PLL_LockStateTypeDef;
 
 typedef struct {
@@ -47,6 +47,8 @@ typedef struct {
 
     int32_t PhaseQ31;
     float Frequency;
+    uint16_t LockCounter;   // Consecutive samples meeting the lock criteria
+    uint16_t UnlockCounter; // Consecutive samples failing the lock criteria
     PLL_LockStateTypeDef LockState;
     PLL_StateTypeDef State;
 } PLL_HandleTypeDef;
@@ -55,6 +57,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTy
 VOLOOP_StatusTypeDef VOLOOP_PLL_DeInit(PLL_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_PLL_Stop(PLL_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_PLL_Reset(PLL_HandleTypeDef* handle);
 PLL_StateTypeDef VOLOOP_PLL_GetState(const PLL_HandleTypeDef* handle);
 
 PLL_LockStateTypeDef VOLOOP_PLL_IsLocked(const PLL_HandleTypeDef* handle);
