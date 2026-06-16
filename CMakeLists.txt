@@ -14,8 +14,9 @@ target_sources(voloop PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/core/Src/voloop_nco.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/Src/voloop_pid.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/Src/voloop_pll.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/Src/voloop_offinv.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/Src/voloop_fof.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/Src/voloop_qpr.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/Src/voloop_offinv.c
 )
 
 target_include_directories(voloop PUBLIC

@@ -8,5 +8,6 @@
 #include "voloop_nco.h"
 #include "voloop_offinv.h"
 #include "voloop_fof.h"
+#include "voloop_qpr.h"
 
 #endif /* VOLOOP_H */
