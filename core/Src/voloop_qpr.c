@@ -198,6 +198,7 @@ VOLOOP_StatusTypeDef VOLOOP_QPR_Reset(QPR_HandleTypeDef* handle) {
     handle->x2 = 0.0f;
     handle->y1 = 0.0f;
     handle->y2 = 0.0f;
+    handle->State = QPR_Unsaturated;
     return VOLOOP_OK;
 }
 
@@ -211,8 +212,16 @@ VOLOOP_StatusTypeDef VOLOOP_QPR_ResetWithValue(QPR_HandleTypeDef* handle, float 
     handle->x2 = x2;
     handle->y1 = y1;
     handle->y2 = y2;
+    handle->State = QPR_Unsaturated;
 
     return VOLOOP_OK;
+}
+
+QPR_StateTypeDef VOLOOP_QPR_GetState(QPR_HandleTypeDef* handle) {
+    if (handle == NULL) {
+        return QPR_ERROR;
+    }
+    return handle->State;
 }
 
 float VOLOOP_QPR_Compute(QPR_HandleTypeDef* handle, float input) {
@@ -231,6 +240,41 @@ float VOLOOP_QPR_Compute(QPR_HandleTypeDef* handle, float input) {
     handle->x1 = input;
     handle->y2 = handle->y1;
     handle->y1 = output;
+    handle->State = QPR_Unsaturated;
+
+    return output;
+}
+
+float VOLOOP_QPR_ComputeBackCalculation(QPR_HandleTypeDef* handle, float input, float outputMin,
+                                        float outputMax, float Kb) {
+    if (handle == NULL) {
+        return 0.0f;
+    }
+
+    // Difference equation:
+    // H(z) = (b0 + b1*z^-1 + b2*z^-2) / (1 + a1*z^-1 + a2*z^-2)
+    // y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
+    float rawOutput = handle->b0 * input + handle->b1 * handle->x1 + handle->b2 * handle->x2 -
+                      handle->a1 * handle->y1 - handle->a2 * handle->y2;
+    float output = rawOutput;
+
+    if (rawOutput > outputMax) {
+        output = outputMax;
+        handle->State = QPR_UpperSaturated;
+    } else if (rawOutput < outputMin) {
+        output = outputMin;
+        handle->State = QPR_LowerSaturated;
+    } else {
+        handle->State = QPR_Unsaturated;
+    }
+
+    float correctedOutput = rawOutput + Kb * (output - rawOutput);
+
+    // Update state with the back-calculated output so the recursive path does not keep winding up.
+    handle->x2 = handle->x1;
+    handle->x1 = input;
+    handle->y2 = handle->y1;
+    handle->y1 = correctedOutput;
 
     return output;
 }

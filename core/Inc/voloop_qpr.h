@@ -26,6 +26,13 @@ typedef enum {
     QPR_NonIdeal,
 } QPR_InitModeTypeDef;
 
+typedef enum {
+    QPR_ERROR = 0U, // Reserved
+    QPR_Unsaturated,
+    QPR_UpperSaturated,
+    QPR_LowerSaturated
+} QPR_StateTypeDef;
+
 typedef struct {
     float b0;
     float b1;
@@ -75,6 +82,8 @@ typedef struct {
     float x2;
     float y1;
     float y2;
+
+    QPR_StateTypeDef State;
 } QPR_HandleTypeDef;
 
 VOLOOP_StatusTypeDef VOLOOP_QPR_Init(QPR_HandleTypeDef* handle, const QPR_InitTypeDef* init);
@@ -84,7 +93,13 @@ VOLOOP_StatusTypeDef VOLOOP_QPR_Reconfig(QPR_HandleTypeDef* handle, const QPR_In
 VOLOOP_StatusTypeDef VOLOOP_QPR_Reset(QPR_HandleTypeDef* handle);
 VOLOOP_StatusTypeDef VOLOOP_QPR_ResetWithValue(QPR_HandleTypeDef* handle, float x1, float x2,
                                                float y1, float y2);
+QPR_StateTypeDef VOLOOP_QPR_GetState(QPR_HandleTypeDef* handle);
 
 float VOLOOP_QPR_Compute(QPR_HandleTypeDef* handle, float input);
+
+// Back-calculation anti-windup
+// Kb should be greater than 0
+float VOLOOP_QPR_ComputeBackCalculation(QPR_HandleTypeDef* handle, float input, float outputMin,
+                                        float outputMax, float Kb);
 
 #endif /* VOLOOP_QPR_H */
