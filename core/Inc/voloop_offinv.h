@@ -1,13 +1,14 @@
+// Off-Grid Inverter
 #ifndef VOLOOP_OFFINV_H
 #define VOLOOP_OFFINV_H
 
 #include "voloop_def.h"
+#include "voloop_qpr.h"
 #include "voloop_nco.h"
 
 typedef struct {
-    float inputVoltage;
-    float outputVoltage;
-    float outputCurrent;
+    float OutputVoltage;
+    float OutputCurrent;
 } OffInv_InputTypeDef;
 
 typedef struct {
@@ -18,7 +19,9 @@ typedef struct {
 } OffInv_OutputTypeDef;
 
 typedef struct {
+    const QPR_InitTypeDef* VoltageQPRInit;
     const NCO_InitTypeDef* NCOInit;
+    const float triggerFrequency;
 } OffInv_InitTypeDef;
 
 typedef enum {
@@ -35,13 +38,20 @@ typedef enum {
 } OffInv_FaultCodeTypeDef;
 
 typedef struct {
+    QPR_HandleTypeDef VoltageQPR;
+    NCO_HandleTypeDef NCO;
+    float NominalFrequency;
+    float triggerFrequency;
+    float TargetVoltage;
     OffInv_StateTypeDef State;
     OffInv_FaultCodeTypeDef FaultCode;
     float Duty;
 } OffInv_HandleTypeDef;
 
+#define OFFINV_OVTHRESHOLD 300.0f
+#define OFFINV_OCTHRESHOLD 30.0f
+
 #define OFFINV_MAX_DUTY 0.90f
-#define OFFINV_MIN_DUTY 0.10f
 
 VOLOOP_StatusTypeDef VOLOOP_OffInv_Init(OffInv_HandleTypeDef* handle, OffInv_InitTypeDef* init);
 VOLOOP_StatusTypeDef VOLOOP_OffInv_DeInit(OffInv_HandleTypeDef* handle);
@@ -54,6 +64,6 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_ClearFaultCode(OffInv_HandleTypeDef* handle);
 
 VOLOOP_StatusTypeDef VOLOOP_OffInv_SetValue(OffInv_HandleTypeDef* handle, float Voltage);
 float VOLOOP_OffInv_GetDuty(OffInv_HandleTypeDef* handle);
-VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle);
+VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle, const OffInv_InputTypeDef* input, OffInv_OutputTypeDef* output);
 
 #endif
