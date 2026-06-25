@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <math.h>
 
 /**
  * @file voloop_def.h
@@ -12,6 +13,30 @@
  * control modules. It also defines weak-style customization macros for sine,
  * cosine, and debug printing so applications can override the default behavior
  * before including this header.
+ */
+
+/**
+ * @defgroup VOLOOP_DEF Common Definitions
+ * @ingroup VOLOOP_CORE
+ * @brief Shared constants, status codes, math helpers, and phase utilities.
+ *
+ * This module provides the common building blocks used across voloop core
+ * algorithms. It defines project-wide status codes, PWM state values,
+ * single-precision math constants, Q1.31 phase conversion helpers, and
+ * override hooks for sine, cosine, and debug printing.
+ *
+ * ## Basic usage
+ *
+ * Include this header directly when only the shared definitions are needed:
+ *
+ * @code
+ * #include "voloop_def.h"
+ * @endcode
+ *
+ * Applications may override ::VOLOOP_DEF_SIN, ::VOLOOP_DEF_COS, or
+ * ::VOLOOP_DEF_PRINTF before including voloop headers.
+ *
+ * @{
  */
 
 /**
@@ -33,8 +58,6 @@
  * @brief Four times pi squared as a single-precision floating-point value.
  */
 #define VOLOOP_FourPiSquared (4.0f * VOLOOP_Pi * VOLOOP_Pi)
-
-#include <math.h>
 
 /**
  * @brief Sine function hook used by modules that operate on Q1.31 phase values.
@@ -141,5 +164,7 @@ typedef enum {
     VOLOOP_PWM_DISABLED = 0U, /**< PWM output is disabled. */
     VOLOOP_PWM_ENABLE,        /**< PWM output is enabled. */
 } VOLOOP_DEF_PwmStateTypeDef;
+
+/** @} */
 
 #endif /* VOLOOP_DEF_H */

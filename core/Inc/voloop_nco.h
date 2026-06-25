@@ -13,6 +13,47 @@
 #include <stdint.h>
 
 /**
+ * @defgroup VOLOOP_NCO Numerically Controlled Oscillator
+ * @ingroup VOLOOP_CORE
+ * @brief Phase accumulator and sine/cosine generation APIs.
+ *
+ * The NCO module maintains a Q1.31 phase accumulator and exposes the current
+ * phase as radians, Q1.31 value, sine, and cosine. It is typically updated
+ * from a fixed-frequency timer or control-loop interrupt.
+ *
+ * ## Basic usage
+ *
+ * 1. Declare a ::NCO_HandleTypeDef object.
+ * 2. Fill a ::NCO_InitTypeDef object with trigger frequency, initial frequency,
+ *    and initial phase.
+ * 3. Call ::VOLOOP_NCO_Init and ::VOLOOP_NCO_Start.
+ * 4. Call ::VOLOOP_NCO_Sync once per trigger event.
+ * 5. Read phase, sine, or cosine with the getter APIs.
+ *
+ * ## Example
+ *
+ * @code
+ * NCO_HandleTypeDef nco;
+ * NCO_InitTypeDef init = {
+ *     .triggerFrequency = 10000U,
+ *     .initialFrequency = 50.0f,
+ *     .initialRad = 0.0f,
+ * };
+ *
+ * VOLOOP_NCO_Init(&nco, &init);
+ * VOLOOP_NCO_Start(&nco);
+ * VOLOOP_NCO_Sync(&nco);
+ *
+ * float sine = VOLOOP_NCO_GetSine(&nco);
+ * @endcode
+ *
+ * @note The output frequency must be greater than 0 and less than the trigger
+ * frequency.
+ *
+ * @{
+ */
+
+/**
  * @brief NCO initialization parameters.
  */
 typedef struct {
@@ -181,5 +222,7 @@ float VOLOOP_NCO_GetCosine(NCO_HandleTypeDef* handle);
  * @note This function is valid only while the NCO is running.
  */
 VOLOOP_StatusTypeDef VOLOOP_NCO_Sync(NCO_HandleTypeDef* handle);
+
+/** @} */
 
 #endif /* VOLOOP_NCO_H */

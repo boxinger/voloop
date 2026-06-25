@@ -10,6 +10,23 @@
  * header that is needed, such as voloop_pid.h or voloop_qpr.h.
  */
 
+/**
+ * @defgroup VOLOOP_CORE voloop Core
+ * @brief Platform-independent digital power control algorithms and utilities.
+ *
+ * The core module contains reusable control algorithms and helper utilities
+ * that do not depend on a specific MCU, HAL, board, or peripheral driver.
+ *
+ * Most applications include this aggregate header:
+ *
+ * @code
+ * #include "voloop.h"
+ * @endcode
+ *
+ * Core APIs are organized into functional modules such as common definitions,
+ * PID, first-order filters, QPR, NCO, PLL, and off-grid inverter control.
+ */
+
 #include "voloop_def.h"
 #include "voloop_pid.h"
 #include "voloop_buck.h"

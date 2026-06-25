@@ -25,6 +25,39 @@
 #include <stdint.h>
 
 /**
+ * @defgroup VOLOOP_FOF First-Order Filter
+ * @ingroup VOLOOP_CORE
+ * @brief First-order filter and lead-lag compensator APIs.
+ *
+ * The FOF module implements one-pole/one-zero discrete filters and helper
+ * initializers for common continuous first-order forms. Continuous modes are
+ * converted to the runtime discrete form with Tustin discretization.
+ *
+ * ## Basic usage
+ *
+ * 1. Declare a ::FOF_HandleTypeDef object.
+ * 2. Fill a ::FOF_InitTypeDef object and select its initialization mode.
+ * 3. Call ::VOLOOP_FOF_Init.
+ * 4. Call ::VOLOOP_FOF_Compute once per sample.
+ *
+ * ## Example
+ *
+ * @code
+ * FOF_HandleTypeDef filter;
+ * FOF_InitTypeDef init = {0};
+ *
+ * init.mode = FOF_LowPass;
+ * init.init.LowPass.cutoffFrequency = 100.0f;
+ * init.init.LowPass.triggerFrequency = 10000.0f;
+ *
+ * VOLOOP_FOF_Init(&filter, &init);
+ * float y = VOLOOP_FOF_Compute(&filter, x);
+ * @endcode
+ *
+ * @{
+ */
+
+/**
  * @brief FOF initialization mode.
  */
 typedef enum {
@@ -187,5 +220,7 @@ VOLOOP_StatusTypeDef VOLOOP_FOF_ResetWithValue(FOF_HandleTypeDef* handle, float 
  * @return Current output sample. Returns 0.0f if @p handle is NULL.
  */
 float VOLOOP_FOF_Compute(FOF_HandleTypeDef* handle, float input);
+
+/** @} */
 
 #endif /* VOLOOP_FOF_H */

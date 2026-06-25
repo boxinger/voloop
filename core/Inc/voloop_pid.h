@@ -27,6 +27,45 @@
 #include <stdint.h>
 
 /**
+ * @defgroup VOLOOP_PID PID Controller
+ * @ingroup VOLOOP_CORE
+ * @brief PID controller initialization, state management, and runtime execution.
+ *
+ * The PID module provides multiple initialization modes for discrete and
+ * continuous control-loop designs. It supports plain PID execution, output
+ * limiting with conditional integration, and back-calculation anti-windup.
+ *
+ * ## Basic usage
+ *
+ * 1. Declare a ::PID_HandleTypeDef object.
+ * 2. Fill a ::PID_InitTypeDef object and select its initialization mode.
+ * 3. Call ::VOLOOP_PID_Init.
+ * 4. Call ::VOLOOP_PID_Compute, ::VOLOOP_PID_ComputeConditional, or
+ *    ::VOLOOP_PID_ComputeBackCalculation once per control-loop sample.
+ *
+ * ## Example
+ *
+ * @code
+ * PID_HandleTypeDef pid;
+ * PID_InitTypeDef init = {0};
+ *
+ * init.mode = PID_Discrete;
+ * init.init.Discrete.KpDiscrete = 1.0f;
+ * init.init.Discrete.KiDiscrete = 0.01f;
+ * init.init.Discrete.KdDiscrete = 0.0f;
+ *
+ * VOLOOP_PID_Init(&pid, &init);
+ *
+ * float output = VOLOOP_PID_ComputeConditional(&pid, setpoint, measurement,
+ *                                              0.0f, 1.0f);
+ * @endcode
+ *
+ * @note PID compute APIs should be called at a fixed sampling interval.
+ *
+ * @{
+ */
+
+/**
  * @brief Discrete PID gain initialization.
  *
  * These gains are used directly by the runtime difference equation. The
@@ -239,5 +278,7 @@ float VOLOOP_PID_ComputeConditional(PID_HandleTypeDef* handle, float setpoint, f
 float VOLOOP_PID_ComputeBackCalculation(PID_HandleTypeDef* handle, float setpoint,
                                         float measurement, float outputMin, float outputMax,
                                         float Kb);
+
+/** @} */
 
 #endif /* VOLOOP_PID_H */

@@ -32,6 +32,46 @@
 #include <stdint.h>
 
 /**
+ * @defgroup VOLOOP_QPR QPR Controller
+ * @ingroup VOLOOP_CORE
+ * @brief Quasi/proportional-resonant controller APIs.
+ *
+ * The QPR module implements a second-order resonant controller for periodic
+ * references or disturbances. It can be initialized from discrete coefficients,
+ * an ideal proportional-resonant controller, or a non-ideal/quasi
+ * proportional-resonant controller.
+ *
+ * ## Basic usage
+ *
+ * 1. Declare a ::QPR_HandleTypeDef object.
+ * 2. Fill a ::QPR_InitTypeDef object and select its initialization mode.
+ * 3. Call ::VOLOOP_QPR_Init.
+ * 4. Call ::VOLOOP_QPR_Compute or ::VOLOOP_QPR_ComputeBackCalculation once per
+ *    sample.
+ *
+ * ## Example
+ *
+ * @code
+ * QPR_HandleTypeDef qpr;
+ * QPR_InitTypeDef init = {0};
+ *
+ * init.mode = QPR_NonIdeal;
+ * init.init.NonIdeal.Kp = 0.1f;
+ * init.init.NonIdeal.Kr = 20.0f;
+ * init.init.NonIdeal.resonantFrequency = 50.0f;
+ * init.init.NonIdeal.cutoffFrequency = 5.0f;
+ * init.init.NonIdeal.triggerFrequency = 10000.0f;
+ *
+ * VOLOOP_QPR_Init(&qpr, &init);
+ * float output = VOLOOP_QPR_Compute(&qpr, input);
+ * @endcode
+ *
+ * @note Frequencies in QPR initialization structures are specified in Hz.
+ *
+ * @{
+ */
+
+/**
  * @brief QPR initialization mode.
  */
 typedef enum {
@@ -221,5 +261,7 @@ float VOLOOP_QPR_Compute(QPR_HandleTypeDef* handle, float input);
  */
 float VOLOOP_QPR_ComputeBackCalculation(QPR_HandleTypeDef* handle, float input, float outputMin,
                                         float outputMax, float Kb);
+
+/** @} */
 
 #endif /* VOLOOP_QPR_H */
