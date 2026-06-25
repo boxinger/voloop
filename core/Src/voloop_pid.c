@@ -1,5 +1,12 @@
 #include "voloop_pid.h"
 
+VOLOOP_StatusTypeDef VOLOOP_PID_InitDiscrete(PID_HandleTypeDef* handle,
+                                             const PID_InitDiscreteTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitContinue(PID_HandleTypeDef* handle,
+                                             const PID_InitContinueTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitOneZero(PID_HandleTypeDef* handle, const PID_InitOneZeroTypeDef* init);
+VOLOOP_StatusTypeDef VOLOOP_PID_InitTwoZero(PID_HandleTypeDef* handle, const PID_InitTwoZeroTypeDef* init);
+
 VOLOOP_StatusTypeDef VOLOOP_PID_Init(PID_HandleTypeDef* handle, const PID_InitTypeDef* init) {
     if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
