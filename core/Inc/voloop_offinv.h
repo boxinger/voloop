@@ -50,7 +50,8 @@ typedef struct {
 typedef struct {
     const QPR_InitTypeDef* VoltageQPRInit; /**< Voltage-loop QPR initialization. */
     const NCO_InitTypeDef* NCOInit; /**< NCO initialization used to generate voltage phase. */
-    const float triggerFrequency;   /**< Control loop frequency in Hz. */
+    const float triggerFrequency;   /**< Control loop frequency in Hz. Use the same trigger
+                                         frequency for this module, QPR, and NCO during init. */
 } OffInv_InitTypeDef;
 
 /**
@@ -69,7 +70,8 @@ typedef enum {
     OFFINV_INVALID = 0U, /**< Invalid fault code, also returned for invalid handles. */
     OFFINV_NOERROR,      /**< No active fault. */
     OFFINV_OCP,          /**< Over-current protection fault. */
-    OFFINV_OVP           /**< Over-voltage protection fault. */
+    OFFINV_OVP,          /**< Over-voltage protection fault. */
+    OFFINV_NCO,          /**< NCO child-module fault. */
 } OffInv_FaultCodeTypeDef;
 
 /**
@@ -84,6 +86,7 @@ typedef struct {
     float NominalFrequency;       /**< Nominal output frequency in Hz. */
     float triggerFrequency;       /**< Control loop frequency in Hz. */
     float TargetVoltage;          /**< Target output voltage amplitude. */
+    float VoltageQPRKb;           /**< QPR back-calculation anti-windup coefficient. */
     OffInv_StateTypeDef State;    /**< Current inverter controller state. */
     OffInv_FaultCodeTypeDef FaultCode; /**< Current protection fault code. */
     float Duty; /**< Latest signed modulation duty before half-cycle leg selection. */
@@ -103,6 +106,11 @@ typedef struct {
  * @brief Maximum generated PWM duty.
  */
 #define OFFINV_MAX_DUTY 0.90f
+
+/**
+ * @brief Default QPR back-calculation anti-windup coefficient.
+ */
+#define OFFINV_DEFAULT_QPR_KB 0.5f
 
 /**
  * @brief Initialize an off-grid inverter controller.
@@ -168,13 +176,13 @@ OffInv_FaultCodeTypeDef VOLOOP_OffInv_GetFaultCode(OffInv_HandleTypeDef* handle)
 VOLOOP_StatusTypeDef VOLOOP_OffInv_ClearFaultCode(OffInv_HandleTypeDef* handle);
 
 /**
- * @brief Set the target output voltage amplitude.
+ * @brief Set the target output peak voltage.
  *
  * @param handle Off-grid inverter handle.
- * @param Voltage Target voltage amplitude.
+ * @param PeakVoltage Target output peak voltage.
  * @return VOLOOP_OK on success, otherwise a VOLOOP error code.
  */
-VOLOOP_StatusTypeDef VOLOOP_OffInv_SetValue(OffInv_HandleTypeDef* handle, float Voltage);
+VOLOOP_StatusTypeDef VOLOOP_OffInv_SetValue(OffInv_HandleTypeDef* handle, float PeakVoltage);
 
 /**
  * @brief Get the latest signed modulation duty.
@@ -190,6 +198,11 @@ float VOLOOP_OffInv_GetDuty(OffInv_HandleTypeDef* handle);
  * This function checks over-current and over-voltage protection, advances the
  * internal NCO phase, computes a sinusoidal voltage reference, runs the voltage
  * QPR controller, and writes bridge-leg PWM commands.
+ *
+ * @warning This function is intended for high-frequency interrupt/control-loop
+ *          use and therefore does not perform full parameter validity checks.
+ *          The caller must ensure @p handle, @p input, @p output, and measured
+ *          input values are valid before calling.
  *
  * @param handle Off-grid inverter handle.
  * @param input Measured voltage and current input.

@@ -7,6 +7,10 @@ static void VOLOOP_OffInv_DisableOutput(OffInv_OutputTypeDef* output) {
     output->RightLegDuty = 0.0f;
 }
 
+static inline int VOLOOP_OffInv_IsFiniteFloat(float value) {
+    return isfinite(value);
+}
+
 VOLOOP_StatusTypeDef VOLOOP_OffInv_Init(OffInv_HandleTypeDef* handle, OffInv_InitTypeDef* init) {
     if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
@@ -14,7 +18,7 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Init(OffInv_HandleTypeDef* handle, OffInv_Ini
     if (init->VoltageQPRInit == NULL || init->NCOInit == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (init->triggerFrequency <= 0.0f) {
+    if (!VOLOOP_OffInv_IsFiniteFloat(init->triggerFrequency) || init->triggerFrequency <= 0.0f) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -22,6 +26,7 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Init(OffInv_HandleTypeDef* handle, OffInv_Ini
     handle->NominalFrequency = init->NCOInit->initialFrequency;
     handle->triggerFrequency = init->triggerFrequency;
     handle->TargetVoltage = 0.0f;
+    handle->VoltageQPRKb = OFFINV_DEFAULT_QPR_KB;
     handle->State = OFFINV_DISABLED;
     handle->FaultCode = OFFINV_NOERROR;
     handle->Duty = 0.0f;
@@ -69,6 +74,7 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Start(OffInv_HandleTypeDef* handle) {
     VOLOOP_StatusTypeDef status = VOLOOP_NCO_Start(&(handle->NCO));
     if (status != VOLOOP_OK) {
         handle->State = OFFINV_ERROR;
+        handle->FaultCode = OFFINV_NCO;
         return status;
     }
 
@@ -90,6 +96,7 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Stop(OffInv_HandleTypeDef* handle) {
     VOLOOP_StatusTypeDef status = VOLOOP_NCO_Stop(&(handle->NCO));
     if (status != VOLOOP_OK) {
         handle->State = OFFINV_ERROR;
+        handle->FaultCode = OFFINV_NCO;
         return status;
     }
 
@@ -118,16 +125,25 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_ClearFaultCode(OffInv_HandleTypeDef* handle) 
     if (handle->State != OFFINV_ERROR && handle->State != OFFINV_DISABLED) {
         return VOLOOP_INVALID_STATE;
     }
+    if (VOLOOP_NCO_GetState(&(handle->NCO)) == NCO_ERROR) {
+        VOLOOP_StatusTypeDef status = VOLOOP_NCO_ClearFaultCode(&(handle->NCO));
+        if (status != VOLOOP_OK) {
+            return status;
+        }
+    }
     handle->FaultCode = OFFINV_NOERROR;
     handle->State = OFFINV_DISABLED;
     return VOLOOP_OK;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_OffInv_SetValue(OffInv_HandleTypeDef* handle, float Voltage) {
+VOLOOP_StatusTypeDef VOLOOP_OffInv_SetValue(OffInv_HandleTypeDef* handle, float PeakVoltage) {
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    handle->TargetVoltage = Voltage;
+    if (!VOLOOP_OffInv_IsFiniteFloat(PeakVoltage) || PeakVoltage > OFFINV_OVTHRESHOLD) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    handle->TargetVoltage = PeakVoltage;
     return VOLOOP_OK;
 }
 
@@ -139,18 +155,16 @@ float VOLOOP_OffInv_GetDuty(OffInv_HandleTypeDef* handle) {
 }
 
 VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle,
-                                         const OffInv_InputTypeDef* input,
-                                         OffInv_OutputTypeDef* output) {
+                                        const OffInv_InputTypeDef* input,
+                                        OffInv_OutputTypeDef* output) {
     if (handle == NULL || input == NULL || output == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
     if (handle->State == OFFINV_ERROR) {
-        handle->Duty = 0.0f;
         VOLOOP_OffInv_DisableOutput(output);
         return VOLOOP_INVALID_STATE;
     } else if (handle->State == OFFINV_DISABLED) {
-        handle->Duty = 0.0f;
         VOLOOP_OffInv_DisableOutput(output);
         return VOLOOP_OK;
     }
@@ -159,7 +173,6 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle,
     if (fabsf(input->OutputCurrent) > OFFINV_OCTHRESHOLD) {
         handle->State = OFFINV_ERROR;
         handle->FaultCode = OFFINV_OCP;
-        handle->Duty = 0.0f;
         VOLOOP_OffInv_DisableOutput(output);
         return VOLOOP_ERROR;
     }
@@ -167,7 +180,6 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle,
     if (fabsf(input->OutputVoltage) > OFFINV_OVTHRESHOLD) {
         handle->State = OFFINV_ERROR;
         handle->FaultCode = OFFINV_OVP;
-        handle->Duty = 0.0f;
         VOLOOP_OffInv_DisableOutput(output);
         return VOLOOP_ERROR;
     }
@@ -176,7 +188,7 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle,
     VOLOOP_StatusTypeDef status = VOLOOP_NCO_Sync(&(handle->NCO));
     if (status != VOLOOP_OK) {
         handle->State = OFFINV_ERROR;
-        handle->Duty = 0.0f;
+        handle->FaultCode = OFFINV_NCO;
         VOLOOP_OffInv_DisableOutput(output);
         return status;
     }
@@ -187,10 +199,8 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle,
 
     // QPR voltage control: error = Vref - Vout
     float error = vref - input->OutputVoltage;
-    float modulation = VOLOOP_QPR_Compute(&(handle->VoltageQPR), error);
-
-    // Clamp modulation
-    modulation = VOLOOP_DEF_ClampFloat(modulation, -OFFINV_MAX_DUTY, OFFINV_MAX_DUTY);
+    float modulation = VOLOOP_QPR_ComputeBackCalculation(
+        &(handle->VoltageQPR), error, -OFFINV_MAX_DUTY, OFFINV_MAX_DUTY, handle->VoltageQPRKb);
 
     handle->Duty = modulation;
 
