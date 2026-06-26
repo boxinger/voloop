@@ -10,8 +10,7 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Init(Buck_HandleTypeDef* handle, Buck_InitTypeD
     if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (init->OutPutVoltagePIDInit == NULL ||
-        init->InductorCurrentPIDInit == NULL) {
+    if (init->OutPutVoltagePIDInit == NULL || init->InductorCurrentPIDInit == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -69,6 +68,7 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Start(Buck_HandleTypeDef* handle) {
 
     VOLOOP_PID_Reset(&(handle->OutPutVoltagePID));
     VOLOOP_PID_Reset(&(handle->InductorCurrentPID));
+    handle->Duty = 0.0f;
     handle->State = BUCK_CVMODE; // Default to CV mode when starting
 
     return VOLOOP_OK;
@@ -134,8 +134,7 @@ float VOLOOP_Buck_GetDuty(Buck_HandleTypeDef* handle) {
     return handle->Duty;
 }
 
-VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle,
-                                      const Buck_InputTypeDef* input,
+VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle, const Buck_InputTypeDef* input,
                                       Buck_OutputTypeDef* output) {
     // Verify input parameter
     if (handle == NULL || input == NULL || output == NULL) {
@@ -143,11 +142,9 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle,
     }
 
     if (handle->State == BUCK_ERROR) {
-        handle->Duty = 0.0f;
         VOLOOP_Buck_DisableOutput(output);
         return VOLOOP_INVALID_STATE;
     } else if (handle->State == BUCK_DISABLED) {
-        handle->Duty = 0.0f;
         VOLOOP_Buck_DisableOutput(output);
         return VOLOOP_OK;
     }
@@ -160,14 +157,12 @@ VOLOOP_StatusTypeDef VOLOOP_Buck_Sync(Buck_HandleTypeDef* handle,
     if (presentCurrent > BUCK_OCTHRESHOLD) {
         handle->State = BUCK_ERROR;
         handle->FaultCode = BUCK_OCP;
-        handle->Duty = 0.0f;
         VOLOOP_Buck_DisableOutput(output);
         return VOLOOP_ERROR;
     }
     if (presentVoltage > BUCK_OVTHRESHOLD) {
         handle->State = BUCK_ERROR;
         handle->FaultCode = BUCK_OVP;
-        handle->Duty = 0.0f;
         VOLOOP_Buck_DisableOutput(output);
         return VOLOOP_ERROR;
     }
