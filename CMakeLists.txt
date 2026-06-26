@@ -27,12 +27,16 @@ if(UNIX)
     target_link_libraries(voloop PUBLIC m)
 endif()
 
-option(VOLOOP_BUILD_EXAMPLES "Build voloop examples" OFF)
+option(VOLOOP_BUILD_TESTS "Build voloop tests" OFF)
 
-if(VOLOOP_BUILD_EXAMPLES)
+if(VOLOOP_BUILD_TESTS)
+    enable_testing()
+
     add_executable(voloop_link_smoke
-        ${CMAKE_CURRENT_SOURCE_DIR}/examples/link_smoke/main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/link_smoke/main.c
     )
 
     target_link_libraries(voloop_link_smoke PRIVATE voloop)
+
+    add_test(NAME voloop_link_smoke COMMAND voloop_link_smoke)
 endif()

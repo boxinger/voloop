@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build library and link smoke example
+    name: Build library and run tests
     runs-on: ubuntu-24.04
 
     steps:
@@ -26,8 +26,12 @@ jobs:
         run: |
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVOLOOP_BUILD_EXAMPLES=ON
+            -DVOLOOP_BUILD_TESTS=ON
 
       - name: Build
         run: |
           cmake --build build --verbose
+
+      - name: Test
+        run: |
+          ctest --test-dir build --output-on-failure
