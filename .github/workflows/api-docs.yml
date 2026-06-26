@@ -28,7 +28,14 @@ jobs:
       - name: Install documentation tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y doxygen graphviz
+          sudo apt-get install -y graphviz wget
+
+      - name: Install Doxygen
+        run: |
+          wget https://www.doxygen.nl/files/doxygen-1.17.0.linux.bin.tar.gz
+          tar -xzf doxygen-1.17.0.linux.bin.tar.gz
+          sudo cp doxygen-1.17.0/bin/doxygen /usr/local/bin/doxygen
+          doxygen --version
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
