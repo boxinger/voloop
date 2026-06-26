@@ -194,10 +194,15 @@ float VOLOOP_OffInv_GetDuty(OffInv_HandleTypeDef* handle);
  * @param handle Off-grid inverter handle.
  * @param input Measured voltage and current input.
  * @param output PWM output command to write.
- * @return VOLOOP_OK on success, VOLOOP_ERROR on protection fault, otherwise a
- *         VOLOOP error code.
+ * @return VOLOOP_OK on success or disabled-output recommendation,
+ *         VOLOOP_ERROR on protection fault, otherwise a VOLOOP error code.
  *
- * @note This function is valid only while the controller is OFFINV_RUNNING.
+ * @note If the controller is OFFINV_DISABLED, @p output is written with both
+ *       legs set to VOLOOP_PWM_DISABLED and zero duty, and the function returns
+ *       VOLOOP_OK.
+ * @note If the controller is OFFINV_ERROR, @p output is written with both legs
+ *       set to VOLOOP_PWM_DISABLED and zero duty, and the function returns
+ *       VOLOOP_INVALID_STATE.
  */
 VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle,
                                         const OffInv_InputTypeDef* input,
