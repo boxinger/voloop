@@ -188,9 +188,10 @@ float VOLOOP_PLL_GetFrequency(const PLL_HandleTypeDef* handle);
  *
  * @param handle PLL handle.
  * @param input Measured input sample.
- * @return VOLOOP_OK on success, otherwise a VOLOOP error code.
+ * @return VOLOOP_OK on success or stopped state, otherwise a VOLOOP error code.
  *
- * @note This function is valid only while the PLL is PLL_RUNNING.
+ * @note If the PLL is PLL_STOPPED, this function returns VOLOOP_OK without
+ *       updating runtime state.
  */
 VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle, const PLL_InputTypeDef* input);
 

@@ -230,7 +230,9 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle, const PLL_InputT
         return VOLOOP_INVALID_PARAM;
     }
 
-    if (handle->State != PLL_RUNNING) {
+    if (handle->State == PLL_STOPPED) {
+        return VOLOOP_OK;
+    } else if (handle->State != PLL_RUNNING) {
         return VOLOOP_INVALID_STATE;
     }
 
