@@ -23,8 +23,8 @@ target_include_directories(voloop PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/core/Inc
 )
 
-if(UNIX)
-    target_link_libraries(voloop PUBLIC m)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_libraries(voloop PRIVATE m)
 endif()
 
 option(VOLOOP_BUILD_TESTS "Build voloop tests" OFF)
