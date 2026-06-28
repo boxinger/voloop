@@ -102,6 +102,7 @@ typedef struct {
 
     int32_t PhaseQ31;               /**< Latest estimated phase in Q1.31 format. */
     float Frequency;                /**< Latest estimated frequency in Hz. */
+    float PreviousFrequencyCorrection; /**< Previous loop-filter frequency correction in Hz. */
     uint16_t LockCounter;           /**< Consecutive samples meeting the lock criteria. */
     uint16_t UnlockCounter;         /**< Consecutive samples failing the lock criteria. */
     PLL_LockStateTypeDef LockState; /**< Current lock-detection state. */
