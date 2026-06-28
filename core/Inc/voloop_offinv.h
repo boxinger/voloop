@@ -179,7 +179,7 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_ClearFaultCode(OffInv_HandleTypeDef* handle);
  * @brief Set the target output peak voltage.
  *
  * @param handle Off-grid inverter handle.
- * @param PeakVoltage Target output peak voltage.
+ * @param PeakVoltage Positive target output peak voltage.
  * @return VOLOOP_OK on success, otherwise a VOLOOP error code.
  */
 VOLOOP_StatusTypeDef VOLOOP_OffInv_SetValue(OffInv_HandleTypeDef* handle, float PeakVoltage);

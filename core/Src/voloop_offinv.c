@@ -140,7 +140,8 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_SetValue(OffInv_HandleTypeDef* handle, float 
     if (handle == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (!VOLOOP_OffInv_IsFiniteFloat(PeakVoltage) || PeakVoltage > OFFINV_OVTHRESHOLD) {
+    if (!VOLOOP_OffInv_IsFiniteFloat(PeakVoltage) || PeakVoltage <= 0.0f ||
+        PeakVoltage > OFFINV_OVTHRESHOLD) {
         return VOLOOP_INVALID_PARAM;
     }
     handle->TargetVoltage = PeakVoltage;
@@ -162,6 +163,7 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle,
     }
 
     if (handle->State == OFFINV_ERROR) {
+        // Do not advance the NCO after a fault so the captured phase remains debuggable.
         VOLOOP_OffInv_DisableOutput(output);
         return VOLOOP_INVALID_STATE;
     } else if (handle->State == OFFINV_DISABLED) {
