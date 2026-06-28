@@ -66,14 +66,31 @@ typedef enum {
  * @brief PLL runtime handle.
  *
  * The handle owns the loop-filter PID controller, the NCO phase generator,
- * amplitude normalization state, lock-detection counters, and latest estimated
- * phase/frequency outputs.
+ * SOGI phase-detector state, amplitude normalization state, lock-detection
+ * counters, and latest estimated phase/frequency outputs.
  */
 typedef struct {
     PID_HandleTypeDef LoopFilter; /**< PID loop filter used to correct NCO frequency. */
     NCO_HandleTypeDef NCO;        /**< NCO used to generate phase and quadrature references. */
     float NominalFrequency;       /**< Nominal input frequency in Hz. */
     float triggerFrequency;       /**< Control loop frequency in Hz. */
+    float triggerFrequencyInv;    /**< Reciprocal of @ref triggerFrequency. */
+
+    float sogiCenterFrequency; /**< Last NCO frequency used to calculate SOGI coefficients. */
+    float sogiSinB0;           /**< SOGI in-phase feed-forward coefficient for x[n]. */
+    float sogiSinB1;           /**< SOGI in-phase feed-forward coefficient for x[n-1]. */
+    float sogiSinB2;           /**< SOGI in-phase feed-forward coefficient for x[n-2]. */
+    float sogiCosB0;           /**< SOGI quadrature feed-forward coefficient for x[n]. */
+    float sogiCosB1;           /**< SOGI quadrature feed-forward coefficient for x[n-1]. */
+    float sogiCosB2;           /**< SOGI quadrature feed-forward coefficient for x[n-2]. */
+    float sogiA1;              /**< SOGI shared feedback coefficient for y[n-1]. */
+    float sogiA2;              /**< SOGI shared feedback coefficient for y[n-2]. */
+    float sogiX1;              /**< Previous normalized SOGI input sample. */
+    float sogiX2;              /**< Second previous normalized SOGI input sample. */
+    float sogiSinY1;           /**< Previous SOGI in-phase output sample. */
+    float sogiSinY2;           /**< Second previous SOGI in-phase output sample. */
+    float sogiCosY1;           /**< Previous SOGI quadrature output sample. */
+    float sogiCosY2;           /**< Second previous SOGI quadrature output sample. */
 
     float dcAlpha;                /**< DC-offset tracking coefficient. */
     float squareAlpha;            /**< Mean-square tracking coefficient. */
@@ -182,9 +199,10 @@ float VOLOOP_PLL_GetFrequency(const PLL_HandleTypeDef* handle);
 /**
  * @brief Run one PLL control-loop update.
  *
- * This function updates input normalization, computes phase error, applies the
- * loop filter as a frequency correction, advances the internal NCO, updates the
- * exported phase/frequency, and refreshes lock-detection state.
+ * This function updates input normalization, computes the SOGI-based phase
+ * error, applies the loop filter as a frequency correction, advances the
+ * internal NCO, updates the exported phase/frequency, and refreshes
+ * lock-detection state.
  *
  * @param handle PLL handle.
  * @param input Measured input sample.

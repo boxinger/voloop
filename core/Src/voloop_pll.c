@@ -18,6 +18,7 @@
 #define PLL_DC_ALPHA_CYCLES 100.0f
 #define PLL_SQUARE_ALPHA_CYCLES 5.0f
 #define PLL_INV_PEAK_UPDATE_PERIOD 20
+#define PLL_SOGI_K 1.4142135623730951f
 
 static float VOLOOP_PLL_CalcAlphaByCycles(
     float triggerFrequency,
@@ -33,6 +34,93 @@ static float VOLOOP_PLL_CalcAlphaByCycles(
     float alpha = nominalFrequency / (triggerFrequency * trackCycles);
 
     return VOLOOP_DEF_ClampFloat(alpha, PLL_ALPHA_MIN, PLL_ALPHA_MAX);
+}
+
+static void VOLOOP_PLL_ResetSOGIState(PLL_HandleTypeDef* handle) {
+    if (handle == NULL) {
+        return;
+    }
+
+    handle->sogiX1 = 0.0f;
+    handle->sogiX2 = 0.0f;
+    handle->sogiSinY1 = 0.0f;
+    handle->sogiSinY2 = 0.0f;
+    handle->sogiCosY1 = 0.0f;
+    handle->sogiCosY2 = 0.0f;
+}
+
+/*
+    SOGI-QSG phase detector
+
+    The SOGI converts the normalized input voltage into an in-phase signal and
+    a quadrature signal used by the phase detector:
+
+        Gsin(s) = k*w0*s / (s^2 + k*w0*s + w0^2)
+        Gcos(s) = -k*w0^2 / (s^2 + k*w0*s + w0^2)
+
+    Gcos(s) uses the negative sign so that a sin(w0*t) input produces a
+    positive cos(w0*t) quadrature output.
+
+    Tustin Approximation
+        s = c * (z - 1) / (z + 1), c = 2 / T
+
+    Multiplying numerator and denominator by (z + 1)^2 yields:
+
+        Hsin(z) = (b0s + b1s*z^-1 + b2s*z^-2) /
+                  (a0  + a1*z^-1  + a2*z^-2)
+        Hcos(z) = (b0c + b1c*z^-1 + b2c*z^-2) /
+                  (a0  + a1*z^-1  + a2*z^-2)
+
+    where:
+        a0  =  c^2 + k*w0*c + w0^2
+        a1  = -2*c^2          + 2*w0^2
+        a2  =  c^2 - k*w0*c + w0^2
+
+        b0s =  k*w0*c
+        b1s =  0
+        b2s = -k*w0*c
+
+        b0c = -k*w0^2
+        b1c = -2*k*w0^2
+        b2c = -k*w0^2
+
+    The handle stores coefficients normalized so that a0 = 1. The
+    implementation computes a0Inv once, then multiplies every stored
+    coefficient by a0Inv to avoid repeated division.
+*/
+static VOLOOP_StatusTypeDef VOLOOP_PLL_ConfigSOGI(PLL_HandleTypeDef* handle,
+                                                  float centerFrequency) {
+    if (handle == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (centerFrequency <= 0.0f || handle->triggerFrequency <= 0.0f) {
+        return VOLOOP_INVALID_PARAM;
+    }
+
+    float w0 = VOLOOP_TwoPi * centerFrequency;
+    float w0Sq = w0 * w0;
+    float c = 2.0f * handle->triggerFrequency; // c = 2 / T
+    float cSq = c * c;
+    float kW0C = PLL_SOGI_K * w0 * c;
+    float kW0Sq = PLL_SOGI_K * w0Sq;
+
+    float a0 = cSq + kW0C + w0Sq;
+    if (a0 == 0.0f) {
+        return VOLOOP_INVALID_PARAM;
+    }
+
+    float a0Inv = 1.0f / a0;
+    handle->sogiCenterFrequency = centerFrequency;
+    handle->sogiSinB0 = kW0C * a0Inv;
+    handle->sogiSinB1 = 0.0f;
+    handle->sogiSinB2 = -kW0C * a0Inv;
+    handle->sogiCosB0 = -kW0Sq * a0Inv;
+    handle->sogiCosB1 = -2.0f * kW0Sq * a0Inv;
+    handle->sogiCosB2 = -kW0Sq * a0Inv;
+    handle->sogiA1 = ((-2.0f * cSq) + (2.0f * w0Sq)) * a0Inv;
+    handle->sogiA2 = (cSq - kW0C + w0Sq) * a0Inv;
+
+    return VOLOOP_OK;
 }
 
 VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTypeDef* init) {
@@ -59,6 +147,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTy
     handle->LoopFilter = (PID_HandleTypeDef){ 0 };
     handle->NCO = (NCO_HandleTypeDef){ 0 };
     handle->triggerFrequency = init->triggerFrequency;
+    handle->triggerFrequencyInv = 1.0f / init->triggerFrequency;
     handle->dcAlpha = VOLOOP_PLL_CalcAlphaByCycles(init->triggerFrequency, init->NCOInit->initialFrequency, PLL_DC_ALPHA_CYCLES);
     handle->squareAlpha = VOLOOP_PLL_CalcAlphaByCycles(init->triggerFrequency, init->NCOInit->initialFrequency, PLL_SQUARE_ALPHA_CYCLES);
     handle->dcValue = 0.0f;
@@ -80,6 +169,13 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Init(PLL_HandleTypeDef* handle, const PLL_InitTy
         VOLOOP_PLL_DeInit(handle);
         return status;
     }
+
+    status = VOLOOP_PLL_ConfigSOGI(handle, init->NCOInit->initialFrequency);
+    if (status != VOLOOP_OK) {
+        VOLOOP_PLL_DeInit(handle);
+        return status;
+    }
+    VOLOOP_PLL_ResetSOGIState(handle);
 
     return VOLOOP_OK;
 }
@@ -116,6 +212,13 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Start(PLL_HandleTypeDef* handle) {
     }
 
     VOLOOP_PID_Reset(&(handle->LoopFilter));
+    status = VOLOOP_PLL_ConfigSOGI(handle, VOLOOP_NCO_GetFrequency(&(handle->NCO)));
+    if (status != VOLOOP_OK) {
+        handle->State = PLL_ERROR;
+        handle->LockState = PLL_UNLOCKED;
+        return status;
+    }
+    VOLOOP_PLL_ResetSOGIState(handle);
     handle->LockCounter = 0;
     handle->UnlockCounter = 0;
     handle->LockState = PLL_UNLOCKED;
@@ -172,6 +275,13 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Reset(PLL_HandleTypeDef* handle) {
     VOLOOP_PID_Reset(&(handle->LoopFilter));
     VOLOOP_NCO_SetFrequency(&(handle->NCO), handle->NominalFrequency);
     VOLOOP_NCO_SetRad(&(handle->NCO), 0.0f);
+    VOLOOP_StatusTypeDef status = VOLOOP_PLL_ConfigSOGI(handle, handle->NominalFrequency);
+    if (status != VOLOOP_OK) {
+        handle->State = PLL_ERROR;
+        handle->LockState = PLL_UNLOCKED;
+        return status;
+    }
+    VOLOOP_PLL_ResetSOGIState(handle);
 
     // Reset PLL-level state and amplitude estimation.
     handle->PhaseQ31 = 0;
@@ -236,6 +346,8 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle, const PLL_InputT
         return VOLOOP_INVALID_STATE;
     }
 
+    VOLOOP_StatusTypeDef status;
+
     handle->dcValue += handle->dcAlpha * (input->InputVoltage - handle->dcValue);
     float acValue = input->InputVoltage - handle->dcValue;
     handle->squareAvg += handle->squareAlpha * (acValue * acValue - handle->squareAvg);
@@ -254,10 +366,47 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle, const PLL_InputT
         }
     }
 
-    // 1) Phase detector: input(sin) * NCO(cos)
-    float ncoCos = VOLOOP_NCO_GetCosine(&(handle->NCO));
+    // 1) Phase detector: SOGI(inputNormalized) x NCO quadrature references.
+    float currentNcoFrequency = VOLOOP_NCO_GetFrequency(&(handle->NCO));
+    if (currentNcoFrequency != handle->sogiCenterFrequency) {
+        status = VOLOOP_PLL_ConfigSOGI(handle, currentNcoFrequency);
+        if (status != VOLOOP_OK) {
+            handle->State = PLL_ERROR;
+            handle->LockState = PLL_UNLOCKED;
+            return status;
+        }
+    }
+
     float inputNormalized = acValue * handle->peakValueInv;
-    float phaseError = inputNormalized * ncoCos;
+    float phaseError = 0.0f;
+    if (handle->peakValueInv == 0.0f) {
+        VOLOOP_PLL_ResetSOGIState(handle);
+    } else {
+        // Difference equation:
+        // H(z) = (b0 + b1*z^-1 + b2*z^-2) / (1 + a1*z^-1 + a2*z^-2)
+        // y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
+        float sogiSin = handle->sogiSinB0 * inputNormalized +
+                        handle->sogiSinB1 * handle->sogiX1 +
+                        handle->sogiSinB2 * handle->sogiX2 -
+                        handle->sogiA1 * handle->sogiSinY1 -
+                        handle->sogiA2 * handle->sogiSinY2;
+        float sogiCos = handle->sogiCosB0 * inputNormalized +
+                        handle->sogiCosB1 * handle->sogiX1 +
+                        handle->sogiCosB2 * handle->sogiX2 -
+                        handle->sogiA1 * handle->sogiCosY1 -
+                        handle->sogiA2 * handle->sogiCosY2;
+
+        handle->sogiX2 = handle->sogiX1;
+        handle->sogiX1 = inputNormalized;
+        handle->sogiSinY2 = handle->sogiSinY1;
+        handle->sogiSinY1 = sogiSin;
+        handle->sogiCosY2 = handle->sogiCosY1;
+        handle->sogiCosY1 = sogiCos;
+
+        float ncoSin = VOLOOP_NCO_GetSine(&(handle->NCO));
+        float ncoCos = VOLOOP_NCO_GetCosine(&(handle->NCO));
+        phaseError = (sogiSin * ncoCos) - (sogiCos * ncoSin);
+    }
 
     // 2) Loop filter: PI output as frequency correction
     float frequencyCorrection = VOLOOP_PID_Compute(&(handle->LoopFilter), 0.0f, -phaseError);
@@ -265,7 +414,7 @@ VOLOOP_StatusTypeDef VOLOOP_PLL_Sync(PLL_HandleTypeDef* handle, const PLL_InputT
     // 3) Update NCO frequency and phase
     // float nextFrequency = VOLOOP_NCO_GetFrequency(handle->NCO) + frequencyCorrection;
     float nextFrequency = handle->NominalFrequency + frequencyCorrection;
-    VOLOOP_StatusTypeDef status = VOLOOP_NCO_SetFrequency(&(handle->NCO), nextFrequency);
+    status = VOLOOP_NCO_SetFrequency(&(handle->NCO), nextFrequency);
     if (status != VOLOOP_OK) {
         handle->State = PLL_ERROR;
         handle->LockState = PLL_UNLOCKED;
