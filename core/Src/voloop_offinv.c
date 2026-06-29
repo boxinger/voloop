@@ -21,10 +21,14 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Init(OffInv_HandleTypeDef* handle, OffInv_Ini
     if (!VOLOOP_OffInv_IsFiniteFloat(init->triggerFrequency) || init->triggerFrequency <= 0.0f) {
         return VOLOOP_INVALID_PARAM;
     }
+    if (!(init->InputVoltage > 0.0f)) {
+        return VOLOOP_INVALID_PARAM;
+    }
 
     *handle = (OffInv_HandleTypeDef){ 0 };
     handle->NominalFrequency = init->NCOInit->initialFrequency;
     handle->triggerFrequency = init->triggerFrequency;
+    handle->InputVoltage = init->InputVoltage;
     handle->TargetVoltage = 0.0f;
     handle->VoltageQPRKb = OFFINV_DEFAULT_QPR_KB;
     handle->State = OFFINV_DISABLED;
@@ -141,7 +145,7 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_SetValue(OffInv_HandleTypeDef* handle, float 
         return VOLOOP_INVALID_PARAM;
     }
     if (!VOLOOP_OffInv_IsFiniteFloat(PeakVoltage) || PeakVoltage <= 0.0f ||
-        PeakVoltage > OFFINV_OVTHRESHOLD) {
+        PeakVoltage > OFFINV_OVTHRESHOLD || PeakVoltage > handle->InputVoltage) {
         return VOLOOP_INVALID_PARAM;
     }
     handle->TargetVoltage = PeakVoltage;
@@ -204,21 +208,28 @@ VOLOOP_StatusTypeDef VOLOOP_OffInv_Sync(OffInv_HandleTypeDef* handle,
     float modulation = VOLOOP_QPR_ComputeBackCalculation(
         &(handle->VoltageQPR), error, -OFFINV_MAX_DUTY, OFFINV_MAX_DUTY, handle->VoltageQPRKb);
 
+    modulation += vref / handle->InputVoltage;
     handle->Duty = modulation;
 
     // Unipolar SPWM: low-side MOSFET allowed constant-on (duty=0)
-    if (sinRef >= 0.0f) {
+    if (sinRef >= OFFINV_ZERO_CROSS_DEADBAND) {
         // Positive half-cycle: left leg SPWM, right leg low-side on
         output->LeftLegPwmState = VOLOOP_PWM_ENABLE;
         output->LeftLegDuty = VOLOOP_DEF_ClampFloat(modulation, 0.0f, OFFINV_MAX_DUTY);
         output->RightLegPwmState = VOLOOP_PWM_ENABLE;
         output->RightLegDuty = 0.0f;
-    } else {
+    } else if (sinRef <= -OFFINV_ZERO_CROSS_DEADBAND) {
         // Negative half-cycle: right leg SPWM, left leg low-side on
         output->LeftLegPwmState = VOLOOP_PWM_ENABLE;
         output->LeftLegDuty = 0.0f;
         output->RightLegPwmState = VOLOOP_PWM_ENABLE;
         output->RightLegDuty = VOLOOP_DEF_ClampFloat(-modulation, 0.0f, OFFINV_MAX_DUTY);
+    } else {
+        // Near zero crossing: both legs low-side on
+        output->LeftLegPwmState = VOLOOP_PWM_ENABLE;
+        output->LeftLegDuty = 0.0f;
+        output->RightLegPwmState = VOLOOP_PWM_ENABLE;
+        output->RightLegDuty = 0.0f;
     }
 
     return VOLOOP_OK;

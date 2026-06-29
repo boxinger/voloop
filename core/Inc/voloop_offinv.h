@@ -50,6 +50,7 @@ typedef struct {
 typedef struct {
     const QPR_InitTypeDef* VoltageQPRInit; /**< Voltage-loop QPR initialization. */
     const NCO_InitTypeDef* NCOInit; /**< NCO initialization used to generate voltage phase. */
+    float InputVoltage;             /**< Fixed inverter input voltage used for feed-forward. */
     const float triggerFrequency;   /**< Control loop frequency in Hz. Use the same trigger
                                          frequency for this module, QPR, and NCO during init. */
 } OffInv_InitTypeDef;
@@ -85,6 +86,7 @@ typedef struct {
     NCO_HandleTypeDef NCO;        /**< Phase generator used to create the sinusoidal reference. */
     float NominalFrequency;       /**< Nominal output frequency in Hz. */
     float triggerFrequency;       /**< Control loop frequency in Hz. */
+    float InputVoltage;           /**< Fixed inverter input voltage used for feed-forward. */
     float TargetVoltage;          /**< Target output voltage amplitude. */
     float VoltageQPRKb;           /**< QPR back-calculation anti-windup coefficient. */
     OffInv_StateTypeDef State;    /**< Current inverter controller state. */
@@ -106,6 +108,11 @@ typedef struct {
  * @brief Maximum generated PWM duty.
  */
 #define OFFINV_MAX_DUTY 0.90f
+
+/**
+ * @brief Sine-reference deadband around zero crossing.
+ */
+#define OFFINV_ZERO_CROSS_DEADBAND 0.1f
 
 /**
  * @brief Default QPR back-calculation anti-windup coefficient.
