@@ -120,6 +120,24 @@ typedef enum {
 float VOLOOP_DEF_ClampFloat(float value, float min, float max);
 
 /**
+ * @brief Calculate an EMA/IIR alpha from a tracking window in signal cycles.
+ *
+ * The returned coefficient is intended for first-order updates:
+ *
+ * @code
+ * state += alpha * (input - state);
+ * @endcode
+ *
+ * @param triggerFrequency Update or control-loop frequency in Hz.
+ * @param nominalFrequency Nominal signal frequency in Hz.
+ * @param trackCycles Tracking window in cycles of @p nominalFrequency.
+ * @return Computed alpha, or 0.0f if any input parameter is non-positive.
+ */
+float VOLOOP_DEF_CalcAlphaByCycles(float triggerFrequency,
+                                   float nominalFrequency,
+                                   float trackCycles);
+
+/**
  * @brief Convert a Q1.31 phase value to radians.
  *
  * The Q1.31 phase range maps approximately to [-pi, pi). INT32_MIN maps to

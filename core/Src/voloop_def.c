@@ -35,6 +35,18 @@ float VOLOOP_DEF_ClampFloat(float value, float min, float max) {
     }
 }
 
+float VOLOOP_DEF_CalcAlphaByCycles(float triggerFrequency,
+                                   float nominalFrequency,
+                                   float trackCycles) {
+    if (triggerFrequency <= 0.0f ||
+        nominalFrequency <= 0.0f ||
+        trackCycles <= 0.0f) {
+        return 0.0f;
+    }
+
+    return nominalFrequency / (triggerFrequency * trackCycles);
+}
+
 float VOLOOP_DEF_Q31ToRad(int32_t value) {
     return (float)value * VOLOOP_Pi * VOLOOP_DEF_Q31_SCALE_INV;
 }
