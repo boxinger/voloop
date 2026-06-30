@@ -1,0 +1,80 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "host-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "host-lib",
+      "inherits": "host-base",
+      "cacheVariables": {
+        "VOLOOP_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "host-tests",
+      "inherits": "host-base",
+      "cacheVariables": {
+        "VOLOOP_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "host-debug",
+      "inherits": "host-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VOLOOP_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "host-lib",
+      "configurePreset": "host-lib",
+      "targets": [
+        "voloop"
+      ]
+    },
+    {
+      "name": "host-tests",
+      "configurePreset": "host-tests"
+    },
+    {
+      "name": "host-debug",
+      "configurePreset": "host-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "host-tests",
+      "configurePreset": "host-tests",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "host-debug",
+      "configurePreset": "host-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    }
+  ]
+}
