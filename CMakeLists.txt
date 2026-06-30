@@ -12,3 +12,7 @@ if(VOLOOP_BUILD_TESTS)
     include(CTest)
     add_subdirectory(tests)
 endif()
+
+if(VOLOOP_BUILD_DOCS)
+    add_subdirectory(docs)
+endif()

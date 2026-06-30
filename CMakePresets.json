@@ -36,6 +36,15 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "VOLOOP_BUILD_TESTS": "ON"
       }
+    },
+    {
+      "name": "docs",
+      "inherits": "host-base",
+      "binaryDir": "${sourceDir}/build/docs/cmake",
+      "cacheVariables": {
+        "VOLOOP_BUILD_TESTS": "OFF",
+        "VOLOOP_BUILD_DOCS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -53,6 +62,13 @@
     {
       "name": "host-debug",
       "configurePreset": "host-debug"
+    },
+    {
+      "name": "docs",
+      "configurePreset": "docs",
+      "targets": [
+        "voloop_docs"
+      ]
     }
   ],
   "testPresets": [
