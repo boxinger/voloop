@@ -13,6 +13,6 @@ function(voloop_add_c_test name)
 
     add_test(
         NAME ${name}
-        COMMAND ${name}
+        COMMAND $<TARGET_FILE:${name}>
     )
 endfunction()
