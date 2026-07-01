@@ -19,6 +19,11 @@ function(voloop_add_c_test name)
             voloop::voloop
     )
 
+    target_include_directories(${name}
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/tests/support
+    )
+
     target_compile_features(${name}
         PRIVATE
             c_std_99
