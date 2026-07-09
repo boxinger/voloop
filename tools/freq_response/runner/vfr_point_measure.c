@@ -46,8 +46,6 @@ const char* VFR_PointMeasureStatusToString(VFR_PointMeasureStatus status) {
             return "insufficient_samples";
         case VFR_POINT_SAMPLE_LIMIT_EXCEEDED:
             return "sample_limit_exceeded";
-        case VFR_POINT_NONFINITE_OUTPUT:
-            return "nonfinite_output";
         case VFR_POINT_OUTPUT_LIMIT_EXCEEDED:
             return "output_limit_exceeded";
         case VFR_POINT_NUMERIC_ERROR:
@@ -112,8 +110,11 @@ VFR_PointMeasureStatus VFR_MeasurePoint(VFR_TestSubject* subject,
 
     /*
      * Test-point sampling-period approximation:
-     * use round(fs / f) so warmup and measurement cover integer input cycles
-     * for the requested frequency point.
+     * use round(fs / f) so warmup and measurement cover approximately integer
+     * input cycles for the requested frequency point. Stage-one/two tests
+     * should prefer frequencies that divide the sample rate closely. Future
+     * logarithmic sweeps should evaluate leakage using:
+     * actual_cycles_measured = measure_samples * frequency_hz / sample_rate_hz.
      */
     samples_per_cycle = (uint32_t)samples_per_cycle_rounded;
     if (samples_per_cycle < config->min_samples_per_cycle) {
@@ -151,7 +152,7 @@ VFR_PointMeasureStatus VFR_MeasurePoint(VFR_TestSubject* subject,
         double output = (double)subject->compute(subject->context, (float)input);
 
         if (!isfinite(output)) {
-            return vfr_finish(result, VFR_POINT_NONFINITE_OUTPUT);
+            return vfr_finish(result, VFR_POINT_NUMERIC_ERROR);
         }
         if (fabs(output) > config->output_abs_limit) {
             return vfr_finish(result, VFR_POINT_OUTPUT_LIMIT_EXCEEDED);
@@ -169,7 +170,7 @@ VFR_PointMeasureStatus VFR_MeasurePoint(VFR_TestSubject* subject,
         double output = (double)subject->compute(subject->context, (float)input);
 
         if (!isfinite(output)) {
-            return vfr_finish(result, VFR_POINT_NONFINITE_OUTPUT);
+            return vfr_finish(result, VFR_POINT_NUMERIC_ERROR);
         }
         if (fabs(output) > config->output_abs_limit) {
             return vfr_finish(result, VFR_POINT_OUTPUT_LIMIT_EXCEEDED);

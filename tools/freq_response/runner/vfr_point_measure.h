@@ -17,9 +17,8 @@ typedef enum {
     VFR_POINT_INVALID_FREQUENCY,  /**< Frequency is non-positive or at/above Nyquist. */
     VFR_POINT_INSUFFICIENT_SAMPLES,  /**< Rounded samples per cycle is below min_samples_per_cycle. */
     VFR_POINT_SAMPLE_LIMIT_EXCEEDED, /**< Requested warmup + measurement samples exceed the limit. */
-    VFR_POINT_NONFINITE_OUTPUT,      /**< Subject output was NaN or Inf. */
     VFR_POINT_OUTPUT_LIMIT_EXCEEDED, /**< Subject output magnitude exceeded output_abs_limit. */
-    VFR_POINT_NUMERIC_ERROR,         /**< Internal measurement math produced a non-finite value. */
+    VFR_POINT_NUMERIC_ERROR,         /**< Subject output or internal measurement math was NaN/Inf. */
     VFR_POINT_SUBJECT_ERROR          /**< Reserved for future subject-level error reporting. */
 } VFR_PointMeasureStatus;
 
@@ -34,7 +33,7 @@ typedef struct {
     uint32_t measure_cycles;      /**< Integer input cycles used for synchronous detection. */
     uint32_t min_samples_per_cycle; /**< Minimum acceptable rounded samples per input cycle. */
     uint32_t max_samples_per_point; /**< Maximum allowed warmup + measurement samples. */
-    double output_abs_limit;      /**< Absolute output limit used to detect unstable responses. */
+    double output_abs_limit;      /**< Absolute finite-output limit used to detect over-limit responses. */
     double gain_floor;            /**< Minimum gain used before converting gain to dB. */
 } VFR_PointMeasureConfig;
 
@@ -69,7 +68,7 @@ VFR_PointMeasureStatus VFR_MeasurePoint(VFR_TestSubject* subject,
  * @brief Convert a measurement status to a stable lowercase CSV/debug string.
  *
  * Example outputs include "ok", "ok_with_gain_floor", "invalid_frequency",
- * and "output_limit_exceeded".
+ * "output_limit_exceeded", and "numeric_error".
  */
 const char* VFR_PointMeasureStatusToString(VFR_PointMeasureStatus status);
 
