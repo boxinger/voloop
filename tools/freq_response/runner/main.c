@@ -10,6 +10,8 @@
 
 typedef struct {
     const char* subject_name;
+    const char* module_name;
+    const char* mode_name;
     const char* freq_file_path;
     const char* out_path;
     VFR_PointMeasureConfig config;
@@ -26,10 +28,11 @@ typedef struct {
 static void vfr_print_usage(FILE* stream) {
     fprintf(stream,
             "Usage: voloop_freq_response_runner "
-            "--subject NAME --sample-rate-hz HZ --input-amplitude AMP "
+            "--module fake --mode NAME --sample-rate-hz HZ --input-amplitude AMP "
             "--warmup-cycles N --measure-cycles N --min-samples-per-cycle N "
             "--max-samples-per-point N --output-abs-limit LIMIT --gain-floor FLOOR "
-            "--freq-file PATH [--out PATH]\n");
+            "--freq-file PATH [--out PATH]\n"
+            "Legacy: --subject NAME is temporarily supported for fake modes.\n");
 }
 
 static int vfr_parse_double(const char* text, double* value) {
@@ -96,6 +99,14 @@ static int vfr_parse_args(int argc, char** argv, VFR_RunnerArgs* args) {
             if (!vfr_take_value(argc, argv, &i, &args->subject_name)) {
                 return 0;
             }
+        } else if (strcmp(argv[i], "--module") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &args->module_name)) {
+                return 0;
+            }
+        } else if (strcmp(argv[i], "--mode") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &args->mode_name)) {
+                return 0;
+            }
         } else if (strcmp(argv[i], "--sample-rate-hz") == 0) {
             if (!vfr_take_value(argc, argv, &i, &value) ||
                 !vfr_parse_double(value, &args->config.sample_rate_hz)) {
@@ -157,7 +168,19 @@ static int vfr_parse_args(int argc, char** argv, VFR_RunnerArgs* args) {
         }
     }
 
-    return args->subject_name != NULL && args->freq_file_path != NULL &&
+    if (args->subject_name != NULL && (args->module_name != NULL || args->mode_name != NULL)) {
+        fprintf(stderr, "legacy --subject cannot be combined with --module or --mode\n");
+        return 0;
+    }
+    if (args->subject_name != NULL) {
+        args->module_name = "fake";
+        args->mode_name = args->subject_name;
+    } else if ((args->module_name == NULL) != (args->mode_name == NULL)) {
+        fprintf(stderr, "--module and --mode must be provided together\n");
+        return 0;
+    }
+
+    return args->module_name != NULL && args->mode_name != NULL && args->freq_file_path != NULL &&
            args->has_sample_rate_hz && args->has_input_amplitude &&
            args->has_warmup_cycles && args->has_measure_cycles &&
            args->has_min_samples_per_cycle && args->has_max_samples_per_point &&
@@ -180,17 +203,18 @@ static int vfr_validate_global_config(const VFR_PointMeasureConfig* config) {
 
 static void vfr_write_csv_header(FILE* out) {
     fprintf(out,
-            "subject,mode,sample_rate_hz,frequency_hz,input_amplitude,output_amplitude,"
+            "module,mode,sample_rate_hz,frequency_hz,input_amplitude,output_amplitude,"
             "gain_linear,gain_db,phase_deg,warmup_samples,measure_samples,total_samples,status\n");
 }
 
 static void vfr_write_csv_row(FILE* out,
-                              const char* subject_name,
+                              const char* module_name,
+                              const char* mode_name,
                               const VFR_PointMeasureConfig* config,
                               const VFR_PointMeasureResult* result) {
     fprintf(out,
-            "%s,fake,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%u,%u,%u,%s\n",
-            subject_name, config->sample_rate_hz, result->frequency_hz,
+            "%s,%s,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%u,%u,%u,%s\n",
+            module_name, mode_name, config->sample_rate_hz, result->frequency_hz,
             result->input_amplitude, result->output_amplitude, result->gain_linear,
             result->gain_db, result->phase_deg, result->warmup_samples,
             result->measure_samples, result->total_samples,
@@ -198,12 +222,12 @@ static void vfr_write_csv_row(FILE* out,
 }
 
 static void vfr_write_bad_frequency_row(FILE* out,
-                                        const char* subject_name,
+                                        const char* module_name,
+                                        const char* mode_name,
                                         const VFR_PointMeasureConfig* config) {
     fprintf(out,
-            "%s,fake,%.17g,%.17g,%.17g,0,0,0,0,0,0,0,%s\n",
-            subject_name, config->sample_rate_hz, config->frequency_hz,
-            config->input_amplitude,
+            "%s,%s,%.17g,nan,%.17g,nan,nan,nan,nan,0,0,0,%s\n",
+            module_name, mode_name, config->sample_rate_hz, config->input_amplitude,
             VFR_PointMeasureStatusToString(VFR_POINT_INVALID_FREQUENCY));
 }
 
@@ -223,8 +247,14 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    if (!VFR_GetFakeSubject(args.subject_name, &subject)) {
-        fprintf(stderr, "Unknown subject: %s\n", args.subject_name);
+    if (strcmp(args.module_name, "fake") != 0) {
+        fprintf(stderr, "unsupported module: %s\n", args.module_name);
+        fprintf(stderr, "currently supported modules: fake\n");
+        return 2;
+    }
+
+    if (!VFR_GetFakeSubjectByMode(args.mode_name, &subject)) {
+        fprintf(stderr, "unsupported fake mode: %s\n", args.mode_name);
         return 2;
     }
 
@@ -266,14 +296,14 @@ int main(int argc, char** argv) {
                 continue;
             }
             args.config.frequency_hz = 0.0;
-            vfr_write_bad_frequency_row(out, args.subject_name, &args.config);
+            vfr_write_bad_frequency_row(out, args.module_name, args.mode_name, &args.config);
             continue;
         }
 
         args.config.frequency_hz = frequency_hz;
         status = VFR_MeasurePoint(&subject, &args.config, &result);
         result.status = status;
-        vfr_write_csv_row(out, args.subject_name, &args.config, &result);
+        vfr_write_csv_row(out, args.module_name, args.mode_name, &args.config, &result);
     }
 
     if (args.out_path != NULL) {

@@ -9,15 +9,20 @@
 #include "vfr_test_subject.h"
 
 /**
- * @brief Resolve a named fake subject.
+ * @brief Resolve a fake subject by mode.
  *
- * Supported names are "unity", "gain2", "negative_unity", "zero", and
+ * Supported modes are "unity", "gain2", "negative_unity", "zero", and
  * "exploding".
  *
- * @param name Subject name from the command line.
+ * @param mode Fake mode name from the command line.
  * @param subject Output test subject.
  * @return 1 on success, otherwise 0.
  */
-int VFR_GetFakeSubject(const char* name, VFR_TestSubject* subject);
+int VFR_GetFakeSubjectByMode(const char* mode, VFR_TestSubject* subject);
+
+/**
+ * @brief Compatibility wrapper for older fake-mode lookup callers.
+ */
+int VFR_GetFakeSubject(const char* mode, VFR_TestSubject* subject);
 
 #endif /* VFR_FAKE_SUBJECTS_H */
