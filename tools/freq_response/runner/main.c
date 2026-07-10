@@ -19,6 +19,7 @@ typedef struct {
     double fof_b0;
     double fof_b1;
     double fof_a1;
+    double fof_cutoff_hz;
     int has_sample_rate_hz;
     int has_input_amplitude;
     int has_warmup_cycles;
@@ -30,6 +31,7 @@ typedef struct {
     int has_fof_b0;
     int has_fof_b1;
     int has_fof_a1;
+    int has_fof_cutoff_hz;
 } VFR_RunnerArgs;
 
 static void vfr_print_usage(FILE* stream) {
@@ -40,6 +42,7 @@ static void vfr_print_usage(FILE* stream) {
             "--max-samples-per-point N --output-abs-limit LIMIT --gain-floor FLOOR "
             "--freq-file PATH [--out PATH]\n"
             "FOF discrete: --module fof --mode discrete --fof-b0 B0 --fof-b1 B1 --fof-a1 A1\n"
+            "FOF filters: --module fof --mode low_pass|high_pass --fof-cutoff-hz HZ\n"
             "Legacy: --subject NAME is temporarily supported for fake modes.\n");
 }
 
@@ -181,6 +184,12 @@ static int vfr_parse_args(int argc, char** argv, VFR_RunnerArgs* args) {
                 return 0;
             }
             args->has_fof_a1 = 1;
+        } else if (strcmp(argv[i], "--fof-cutoff-hz") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_cutoff_hz)) {
+                return 0;
+            }
+            args->has_fof_cutoff_hz = 1;
         } else if (strcmp(argv[i], "--freq-file") == 0) {
             if (!vfr_take_value(argc, argv, &i, &args->freq_file_path)) {
                 return 0;
@@ -225,6 +234,15 @@ static int vfr_validate_global_config(const VFR_PointMeasureConfig* config) {
            config->measure_cycles > 0U &&
            config->min_samples_per_cycle > 0U &&
            config->max_samples_per_point > 0U;
+}
+
+static int vfr_validate_fof_cutoff(const VFR_RunnerArgs* args) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_fof_cutoff_hz && args->fof_cutoff_hz > 0.0 &&
+           args->fof_cutoff_hz < (args->config.sample_rate_hz * 0.5);
 }
 
 static void vfr_write_csv_header(FILE* out) {
@@ -281,18 +299,45 @@ int main(int argc, char** argv) {
         }
     } else if (strcmp(args.module_name, "fof") == 0) {
         if (strcmp(args.mode_name, "discrete") != 0) {
-            fprintf(stderr, "unsupported fof mode: %s\n", args.mode_name);
-            return 2;
-        }
-        if (!args.has_fof_b0 || !args.has_fof_b1 || !args.has_fof_a1) {
-            fprintf(stderr,
-                    "fof discrete requires --fof-b0, --fof-b1, and --fof-a1\n");
-            return 2;
-        }
-        if (!VFR_InitFofDiscreteSubject(&fof_subject, &subject, (float)args.fof_b0,
-                                        (float)args.fof_b1, (float)args.fof_a1)) {
-            fprintf(stderr, "failed to initialize fof discrete subject\n");
-            return 2;
+            if (strcmp(args.mode_name, "low_pass") == 0) {
+                if (!vfr_validate_fof_cutoff(&args)) {
+                    fprintf(stderr,
+                            "fof cutoff frequency must be > 0 and < sample_rate_hz / 2\n");
+                    return 2;
+                }
+                if (!VFR_InitFofLowPassSubject(&fof_subject, &subject,
+                                               (float)args.fof_cutoff_hz,
+                                               (float)args.config.sample_rate_hz)) {
+                    fprintf(stderr, "failed to initialize fof low_pass subject\n");
+                    return 2;
+                }
+            } else if (strcmp(args.mode_name, "high_pass") == 0) {
+                if (!vfr_validate_fof_cutoff(&args)) {
+                    fprintf(stderr,
+                            "fof cutoff frequency must be > 0 and < sample_rate_hz / 2\n");
+                    return 2;
+                }
+                if (!VFR_InitFofHighPassSubject(&fof_subject, &subject,
+                                                (float)args.fof_cutoff_hz,
+                                                (float)args.config.sample_rate_hz)) {
+                    fprintf(stderr, "failed to initialize fof high_pass subject\n");
+                    return 2;
+                }
+            } else {
+                fprintf(stderr, "unsupported fof mode: %s\n", args.mode_name);
+                return 2;
+            }
+        } else {
+            if (!args.has_fof_b0 || !args.has_fof_b1 || !args.has_fof_a1) {
+                fprintf(stderr,
+                        "fof discrete requires --fof-b0, --fof-b1, and --fof-a1\n");
+                return 2;
+            }
+            if (!VFR_InitFofDiscreteSubject(&fof_subject, &subject, (float)args.fof_b0,
+                                            (float)args.fof_b1, (float)args.fof_a1)) {
+                fprintf(stderr, "failed to initialize fof discrete subject\n");
+                return 2;
+            }
         }
     } else {
         fprintf(stderr, "unsupported module: %s\n", args.module_name);

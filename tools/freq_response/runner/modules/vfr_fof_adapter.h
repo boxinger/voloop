@@ -19,4 +19,14 @@ int VFR_InitFofDiscreteSubject(VFR_FofSubject* fof_subject,
                                float b1,
                                float a1);
 
+int VFR_InitFofLowPassSubject(VFR_FofSubject* fof_subject,
+                              VFR_TestSubject* test_subject,
+                              float cutoff_hz,
+                              float trigger_frequency_hz);
+
+int VFR_InitFofHighPassSubject(VFR_FofSubject* fof_subject,
+                               VFR_TestSubject* test_subject,
+                               float cutoff_hz,
+                               float trigger_frequency_hz);
+
 #endif /* VFR_FOF_ADAPTER_H */

@@ -22,6 +22,13 @@ static void vfr_fof_reset(void* context) {
     (void)VOLOOP_FOF_Reset(&subject->handle);
 }
 
+static void vfr_set_fof_test_subject(VFR_FofSubject* fof_subject,
+                                     VFR_TestSubject* test_subject) {
+    test_subject->context = fof_subject;
+    test_subject->compute = vfr_fof_compute;
+    test_subject->reset = vfr_fof_reset;
+}
+
 int VFR_InitFofDiscreteSubject(VFR_FofSubject* fof_subject,
                                VFR_TestSubject* test_subject,
                                float b0,
@@ -42,9 +49,53 @@ int VFR_InitFofDiscreteSubject(VFR_FofSubject* fof_subject,
         return 0;
     }
 
-    test_subject->context = fof_subject;
-    test_subject->compute = vfr_fof_compute;
-    test_subject->reset = vfr_fof_reset;
+    vfr_set_fof_test_subject(fof_subject, test_subject);
+
+    return 1;
+}
+
+int VFR_InitFofLowPassSubject(VFR_FofSubject* fof_subject,
+                              VFR_TestSubject* test_subject,
+                              float cutoff_hz,
+                              float trigger_frequency_hz) {
+    FOF_InitTypeDef init = {0};
+
+    if (fof_subject == NULL || test_subject == NULL) {
+        return 0;
+    }
+
+    init.mode = FOF_LowPass;
+    init.init.LowPass.cutoffFrequency = cutoff_hz;
+    init.init.LowPass.triggerFrequency = trigger_frequency_hz;
+
+    if (VOLOOP_FOF_Init(&fof_subject->handle, &init) != VOLOOP_OK) {
+        return 0;
+    }
+
+    vfr_set_fof_test_subject(fof_subject, test_subject);
+
+    return 1;
+}
+
+int VFR_InitFofHighPassSubject(VFR_FofSubject* fof_subject,
+                               VFR_TestSubject* test_subject,
+                               float cutoff_hz,
+                               float trigger_frequency_hz) {
+    FOF_InitTypeDef init = {0};
+
+    if (fof_subject == NULL || test_subject == NULL) {
+        return 0;
+    }
+
+    init.mode = FOF_HighPass;
+    init.init.HighPass.cutoffFrequency = cutoff_hz;
+    init.init.HighPass.triggerFrequency = trigger_frequency_hz;
+
+    if (VOLOOP_FOF_Init(&fof_subject->handle, &init) != VOLOOP_OK) {
+        return 0;
+    }
+
+    vfr_set_fof_test_subject(fof_subject, test_subject);
 
     return 1;
 }
