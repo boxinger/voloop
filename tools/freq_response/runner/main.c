@@ -1,6 +1,8 @@
 #include "vfr_fake_subjects.h"
 #include "vfr_fof_adapter.h"
+#include "vfr_pid_adapter.h"
 #include "vfr_point_measure.h"
+#include "vfr_qpr_adapter.h"
 
 #include <errno.h>
 #include <math.h>
@@ -28,6 +30,25 @@ typedef struct {
     double fof_cont_b1;
     double fof_cont_a0;
     double fof_cont_a1;
+    double pid_kp_discrete;
+    double pid_ki_discrete;
+    double pid_kd_discrete;
+    double pid_kp;
+    double pid_ki;
+    double pid_kd;
+    double pid_gain;
+    double pid_zero_hz;
+    double pid_zero1_hz;
+    double pid_zero2_hz;
+    double qpr_b0;
+    double qpr_b1;
+    double qpr_b2;
+    double qpr_a1;
+    double qpr_a2;
+    double qpr_kp;
+    double qpr_kr;
+    double qpr_resonant_hz;
+    double qpr_cutoff_hz;
     int has_sample_rate_hz;
     int has_input_amplitude;
     int has_warmup_cycles;
@@ -48,6 +69,25 @@ typedef struct {
     int has_fof_cont_b1;
     int has_fof_cont_a0;
     int has_fof_cont_a1;
+    int has_pid_kp_discrete;
+    int has_pid_ki_discrete;
+    int has_pid_kd_discrete;
+    int has_pid_kp;
+    int has_pid_ki;
+    int has_pid_kd;
+    int has_pid_gain;
+    int has_pid_zero_hz;
+    int has_pid_zero1_hz;
+    int has_pid_zero2_hz;
+    int has_qpr_b0;
+    int has_qpr_b1;
+    int has_qpr_b2;
+    int has_qpr_a1;
+    int has_qpr_a2;
+    int has_qpr_kp;
+    int has_qpr_kr;
+    int has_qpr_resonant_hz;
+    int has_qpr_cutoff_hz;
 } VFR_RunnerArgs;
 
 static void vfr_print_usage(FILE* stream) {
@@ -62,6 +102,14 @@ static void vfr_print_usage(FILE* stream) {
             "FOF lead-lag: --module fof --mode lead_lag --fof-zero-hz HZ --fof-pole-hz HZ --fof-gain GAIN\n"
             "FOF continue: --module fof --mode continue --fof-cont-k K --fof-cont-b0 B0 "
             "--fof-cont-b1 B1 --fof-cont-a0 A0 --fof-cont-a1 A1\n"
+            "PID discrete: --module pid --mode discrete --pid-kp-discrete KP --pid-ki-discrete KI --pid-kd-discrete KD\n"
+            "PID continue: --module pid --mode continue --pid-kp KP --pid-ki KI --pid-kd KD\n"
+            "PID zero placement: --module pid --mode one_zero|two_zero --pid-gain GAIN "
+            "--pid-zero-hz HZ | --pid-zero1-hz HZ --pid-zero2-hz HZ\n"
+            "QPR discrete: --module qpr --mode discrete --qpr-b0 B0 --qpr-b1 B1 --qpr-b2 B2 "
+            "--qpr-a1 A1 --qpr-a2 A2\n"
+            "QPR filters: --module qpr --mode ideal|non_ideal --qpr-kp KP --qpr-kr KR "
+            "--qpr-resonant-hz HZ [--qpr-cutoff-hz HZ]\n"
             "Legacy: --subject NAME is temporarily supported for fake modes.\n");
 }
 
@@ -257,6 +305,120 @@ static int vfr_parse_args(int argc, char** argv, VFR_RunnerArgs* args) {
                 return 0;
             }
             args->has_fof_cont_a1 = 1;
+        } else if (strcmp(argv[i], "--pid-kp-discrete") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_kp_discrete)) {
+                return 0;
+            }
+            args->has_pid_kp_discrete = 1;
+        } else if (strcmp(argv[i], "--pid-ki-discrete") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_ki_discrete)) {
+                return 0;
+            }
+            args->has_pid_ki_discrete = 1;
+        } else if (strcmp(argv[i], "--pid-kd-discrete") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_kd_discrete)) {
+                return 0;
+            }
+            args->has_pid_kd_discrete = 1;
+        } else if (strcmp(argv[i], "--pid-kp") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_kp)) {
+                return 0;
+            }
+            args->has_pid_kp = 1;
+        } else if (strcmp(argv[i], "--pid-ki") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_ki)) {
+                return 0;
+            }
+            args->has_pid_ki = 1;
+        } else if (strcmp(argv[i], "--pid-kd") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_kd)) {
+                return 0;
+            }
+            args->has_pid_kd = 1;
+        } else if (strcmp(argv[i], "--pid-gain") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_gain)) {
+                return 0;
+            }
+            args->has_pid_gain = 1;
+        } else if (strcmp(argv[i], "--pid-zero-hz") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_zero_hz)) {
+                return 0;
+            }
+            args->has_pid_zero_hz = 1;
+        } else if (strcmp(argv[i], "--pid-zero1-hz") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_zero1_hz)) {
+                return 0;
+            }
+            args->has_pid_zero1_hz = 1;
+        } else if (strcmp(argv[i], "--pid-zero2-hz") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->pid_zero2_hz)) {
+                return 0;
+            }
+            args->has_pid_zero2_hz = 1;
+        } else if (strcmp(argv[i], "--qpr-b0") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_b0)) {
+                return 0;
+            }
+            args->has_qpr_b0 = 1;
+        } else if (strcmp(argv[i], "--qpr-b1") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_b1)) {
+                return 0;
+            }
+            args->has_qpr_b1 = 1;
+        } else if (strcmp(argv[i], "--qpr-b2") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_b2)) {
+                return 0;
+            }
+            args->has_qpr_b2 = 1;
+        } else if (strcmp(argv[i], "--qpr-a1") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_a1)) {
+                return 0;
+            }
+            args->has_qpr_a1 = 1;
+        } else if (strcmp(argv[i], "--qpr-a2") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_a2)) {
+                return 0;
+            }
+            args->has_qpr_a2 = 1;
+        } else if (strcmp(argv[i], "--qpr-kp") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_kp)) {
+                return 0;
+            }
+            args->has_qpr_kp = 1;
+        } else if (strcmp(argv[i], "--qpr-kr") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_kr)) {
+                return 0;
+            }
+            args->has_qpr_kr = 1;
+        } else if (strcmp(argv[i], "--qpr-resonant-hz") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_resonant_hz)) {
+                return 0;
+            }
+            args->has_qpr_resonant_hz = 1;
+        } else if (strcmp(argv[i], "--qpr-cutoff-hz") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->qpr_cutoff_hz)) {
+                return 0;
+            }
+            args->has_qpr_cutoff_hz = 1;
         } else if (strcmp(argv[i], "--freq-file") == 0) {
             if (!vfr_take_value(argc, argv, &i, &args->freq_file_path)) {
                 return 0;
@@ -339,6 +501,111 @@ static int vfr_validate_fof_continue(const VFR_RunnerArgs* args) {
            isfinite(args->fof_cont_a1);
 }
 
+static int vfr_sample_rate_to_uint32(double sample_rate_hz, uint32_t* value) {
+    if (value == NULL) {
+        return 0;
+    }
+    if (!isfinite(sample_rate_hz) || sample_rate_hz <= 0.0 ||
+        sample_rate_hz > 4294967295.0 ||
+        floor(sample_rate_hz) != sample_rate_hz) {
+        return 0;
+    }
+
+    *value = (uint32_t)sample_rate_hz;
+    return 1;
+}
+
+static int vfr_validate_pid_discrete(const VFR_RunnerArgs* args) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_pid_kp_discrete && args->has_pid_ki_discrete &&
+           args->has_pid_kd_discrete &&
+           isfinite(args->pid_kp_discrete) &&
+           isfinite(args->pid_ki_discrete) &&
+           isfinite(args->pid_kd_discrete);
+}
+
+static int vfr_validate_pid_continue(const VFR_RunnerArgs* args, uint32_t* trigger_frequency_hz) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_pid_kp && args->has_pid_ki && args->has_pid_kd &&
+           isfinite(args->pid_kp) &&
+           isfinite(args->pid_ki) &&
+           isfinite(args->pid_kd) &&
+           vfr_sample_rate_to_uint32(args->config.sample_rate_hz, trigger_frequency_hz);
+}
+
+static int vfr_validate_pid_one_zero(const VFR_RunnerArgs* args,
+                                     uint32_t* trigger_frequency_hz) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_pid_gain && args->has_pid_zero_hz &&
+           isfinite(args->pid_gain) &&
+           args->pid_zero_hz > 0.0 &&
+           args->pid_zero_hz < (args->config.sample_rate_hz * 0.5) &&
+           vfr_sample_rate_to_uint32(args->config.sample_rate_hz, trigger_frequency_hz);
+}
+
+static int vfr_validate_pid_two_zero(const VFR_RunnerArgs* args,
+                                     uint32_t* trigger_frequency_hz) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_pid_gain && args->has_pid_zero1_hz && args->has_pid_zero2_hz &&
+           isfinite(args->pid_gain) &&
+           args->pid_zero1_hz > 0.0 &&
+           args->pid_zero2_hz > 0.0 &&
+           args->pid_zero1_hz < (args->config.sample_rate_hz * 0.5) &&
+           args->pid_zero2_hz < (args->config.sample_rate_hz * 0.5) &&
+           vfr_sample_rate_to_uint32(args->config.sample_rate_hz, trigger_frequency_hz);
+}
+
+static int vfr_validate_qpr_discrete(const VFR_RunnerArgs* args) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_qpr_b0 && args->has_qpr_b1 && args->has_qpr_b2 &&
+           args->has_qpr_a1 && args->has_qpr_a2 &&
+           isfinite(args->qpr_b0) &&
+           isfinite(args->qpr_b1) &&
+           isfinite(args->qpr_b2) &&
+           isfinite(args->qpr_a1) &&
+           isfinite(args->qpr_a2);
+}
+
+static int vfr_validate_qpr_ideal(const VFR_RunnerArgs* args) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_qpr_kp && args->has_qpr_kr && args->has_qpr_resonant_hz &&
+           isfinite(args->qpr_kp) &&
+           isfinite(args->qpr_kr) &&
+           isfinite(args->qpr_resonant_hz) &&
+           args->qpr_resonant_hz > 0.0 &&
+           args->qpr_resonant_hz < (args->config.sample_rate_hz * 0.5);
+}
+
+static int vfr_validate_qpr_non_ideal(const VFR_RunnerArgs* args) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return vfr_validate_qpr_ideal(args) &&
+           args->has_qpr_cutoff_hz &&
+           isfinite(args->qpr_cutoff_hz) &&
+           args->qpr_cutoff_hz > 0.0 &&
+           args->qpr_cutoff_hz < (args->config.sample_rate_hz * 0.5);
+}
+
 static void vfr_write_csv_header(FILE* out) {
     fprintf(out,
             "module,mode,sample_rate_hz,frequency_hz,input_amplitude,output_amplitude,"
@@ -373,6 +640,8 @@ int main(int argc, char** argv) {
     VFR_RunnerArgs args;
     VFR_TestSubject subject;
     VFR_FofSubject fof_subject;
+    VFR_PidSubject pid_subject;
+    VFR_QprSubject qpr_subject;
     FILE* freq_file;
     FILE* out;
     char line[256];
@@ -463,9 +732,130 @@ int main(int argc, char** argv) {
             fprintf(stderr, "unsupported fof mode: %s\n", args.mode_name);
             return 2;
         }
+    } else if (strcmp(args.module_name, "pid") == 0) {
+        uint32_t trigger_frequency_hz = 0U;
+
+        if (strcmp(args.mode_name, "discrete") == 0) {
+            if (!vfr_validate_pid_discrete(&args)) {
+                fprintf(stderr,
+                        "pid discrete requires finite --pid-kp-discrete, "
+                        "--pid-ki-discrete, and --pid-kd-discrete\n");
+                return 2;
+            }
+            if (!VFR_InitPidDiscreteSubject(&pid_subject, &subject,
+                                            (float)args.pid_kp_discrete,
+                                            (float)args.pid_ki_discrete,
+                                            (float)args.pid_kd_discrete)) {
+                fprintf(stderr, "failed to initialize pid discrete subject\n");
+                return 2;
+            }
+        } else if (strcmp(args.mode_name, "continue") == 0) {
+            if (!vfr_validate_pid_continue(&args, &trigger_frequency_hz)) {
+                fprintf(stderr,
+                        "pid continue requires finite --pid-kp, --pid-ki, --pid-kd, "
+                        "and integer sample_rate_hz within uint32 range\n");
+                return 2;
+            }
+            if (!VFR_InitPidContinueSubject(&pid_subject, &subject,
+                                            (float)args.pid_kp,
+                                            (float)args.pid_ki,
+                                            (float)args.pid_kd,
+                                            trigger_frequency_hz)) {
+                fprintf(stderr, "failed to initialize pid continue subject\n");
+                return 2;
+            }
+        } else if (strcmp(args.mode_name, "one_zero") == 0) {
+            if (!vfr_validate_pid_one_zero(&args, &trigger_frequency_hz)) {
+                fprintf(stderr,
+                        "pid one_zero requires finite --pid-gain, --pid-zero-hz > 0, "
+                        "--pid-zero-hz < sample_rate_hz / 2, and integer sample_rate_hz "
+                        "within uint32 range\n");
+                return 2;
+            }
+            if (!VFR_InitPidOneZeroSubject(&pid_subject, &subject,
+                                           (float)args.pid_gain,
+                                           (float)args.pid_zero_hz,
+                                           trigger_frequency_hz)) {
+                fprintf(stderr, "failed to initialize pid one_zero subject\n");
+                return 2;
+            }
+        } else if (strcmp(args.mode_name, "two_zero") == 0) {
+            if (!vfr_validate_pid_two_zero(&args, &trigger_frequency_hz)) {
+                fprintf(stderr,
+                        "pid two_zero requires finite --pid-gain, positive --pid-zero1-hz "
+                        "and --pid-zero2-hz values below sample_rate_hz / 2, and integer "
+                        "sample_rate_hz within uint32 range\n");
+                return 2;
+            }
+            if (!VFR_InitPidTwoZeroSubject(&pid_subject, &subject,
+                                           (float)args.pid_gain,
+                                           (float)args.pid_zero1_hz,
+                                           (float)args.pid_zero2_hz,
+                                           trigger_frequency_hz)) {
+                fprintf(stderr, "failed to initialize pid two_zero subject\n");
+                return 2;
+            }
+        } else {
+            fprintf(stderr, "unsupported pid mode: %s\n", args.mode_name);
+            return 2;
+        }
+    } else if (strcmp(args.module_name, "qpr") == 0) {
+        if (strcmp(args.mode_name, "discrete") == 0) {
+            if (!vfr_validate_qpr_discrete(&args)) {
+                fprintf(stderr,
+                        "qpr discrete requires finite --qpr-b0, --qpr-b1, "
+                        "--qpr-b2, --qpr-a1, and --qpr-a2\n");
+                return 2;
+            }
+            if (!VFR_InitQprDiscreteSubject(&qpr_subject, &subject,
+                                            (float)args.qpr_b0,
+                                            (float)args.qpr_b1,
+                                            (float)args.qpr_b2,
+                                            (float)args.qpr_a1,
+                                            (float)args.qpr_a2)) {
+                fprintf(stderr, "failed to initialize qpr discrete subject\n");
+                return 2;
+            }
+        } else if (strcmp(args.mode_name, "ideal") == 0) {
+            if (!vfr_validate_qpr_ideal(&args)) {
+                fprintf(stderr,
+                        "qpr ideal requires finite --qpr-kp, --qpr-kr, "
+                        "--qpr-resonant-hz > 0, and --qpr-resonant-hz < "
+                        "sample_rate_hz / 2\n");
+                return 2;
+            }
+            if (!VFR_InitQprIdealSubject(&qpr_subject, &subject,
+                                         (float)args.qpr_kp,
+                                         (float)args.qpr_kr,
+                                         (float)args.qpr_resonant_hz,
+                                         (float)args.config.sample_rate_hz)) {
+                fprintf(stderr, "failed to initialize qpr ideal subject\n");
+                return 2;
+            }
+        } else if (strcmp(args.mode_name, "non_ideal") == 0) {
+            if (!vfr_validate_qpr_non_ideal(&args)) {
+                fprintf(stderr,
+                        "qpr non_ideal requires finite --qpr-kp, --qpr-kr, "
+                        "--qpr-resonant-hz > 0, --qpr-cutoff-hz > 0, and both "
+                        "frequencies < sample_rate_hz / 2\n");
+                return 2;
+            }
+            if (!VFR_InitQprNonIdealSubject(&qpr_subject, &subject,
+                                            (float)args.qpr_kp,
+                                            (float)args.qpr_kr,
+                                            (float)args.qpr_resonant_hz,
+                                            (float)args.qpr_cutoff_hz,
+                                            (float)args.config.sample_rate_hz)) {
+                fprintf(stderr, "failed to initialize qpr non_ideal subject\n");
+                return 2;
+            }
+        } else {
+            fprintf(stderr, "unsupported qpr mode: %s\n", args.mode_name);
+            return 2;
+        }
     } else {
         fprintf(stderr, "unsupported module: %s\n", args.module_name);
-        fprintf(stderr, "currently supported modules: fake, fof\n");
+        fprintf(stderr, "currently supported modules: fake, fof, pid, qpr\n");
         return 2;
     }
 

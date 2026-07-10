@@ -18,6 +18,8 @@ add_executable(voloop_freq_response_runner
     runner/main.c
     runner/vfr_fake_subjects.c
     runner/modules/vfr_fof_adapter.c
+    runner/modules/vfr_pid_adapter.c
+    runner/modules/vfr_qpr_adapter.c
     runner/vfr_point_measure.c
 )
 
