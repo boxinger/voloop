@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.22)
 
 project(voloop_freq_response_tools LANGUAGES C)
 
+if(NOT TARGET voloop::voloop)
+    add_subdirectory(
+        ${CMAKE_CURRENT_LIST_DIR}/../../core
+        ${CMAKE_CURRENT_BINARY_DIR}/voloop_core
+    )
+endif()
+
 add_executable(vfr_point_measure_test
     runner/test_point_measure_main.c
     runner/vfr_point_measure.c
@@ -10,6 +17,7 @@ add_executable(vfr_point_measure_test
 add_executable(voloop_freq_response_runner
     runner/main.c
     runner/vfr_fake_subjects.c
+    runner/modules/vfr_fof_adapter.c
     runner/vfr_point_measure.c
 )
 
@@ -21,6 +29,7 @@ target_include_directories(vfr_point_measure_test
 target_include_directories(voloop_freq_response_runner
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/runner
+        ${CMAKE_CURRENT_SOURCE_DIR}/runner/modules
 )
 
 target_compile_features(vfr_point_measure_test
@@ -49,3 +58,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_link_libraries(vfr_point_measure_test PRIVATE m)
     target_link_libraries(voloop_freq_response_runner PRIVATE m)
 endif()
+
+target_link_libraries(voloop_freq_response_runner
+    PRIVATE
+        voloop::voloop
+)

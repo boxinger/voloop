@@ -1,4 +1,5 @@
 #include "vfr_fake_subjects.h"
+#include "vfr_fof_adapter.h"
 #include "vfr_point_measure.h"
 
 #include <errno.h>
@@ -15,6 +16,9 @@ typedef struct {
     const char* freq_file_path;
     const char* out_path;
     VFR_PointMeasureConfig config;
+    double fof_b0;
+    double fof_b1;
+    double fof_a1;
     int has_sample_rate_hz;
     int has_input_amplitude;
     int has_warmup_cycles;
@@ -23,6 +27,9 @@ typedef struct {
     int has_max_samples_per_point;
     int has_output_abs_limit;
     int has_gain_floor;
+    int has_fof_b0;
+    int has_fof_b1;
+    int has_fof_a1;
 } VFR_RunnerArgs;
 
 static void vfr_print_usage(FILE* stream) {
@@ -32,6 +39,7 @@ static void vfr_print_usage(FILE* stream) {
             "--warmup-cycles N --measure-cycles N --min-samples-per-cycle N "
             "--max-samples-per-point N --output-abs-limit LIMIT --gain-floor FLOOR "
             "--freq-file PATH [--out PATH]\n"
+            "FOF discrete: --module fof --mode discrete --fof-b0 B0 --fof-b1 B1 --fof-a1 A1\n"
             "Legacy: --subject NAME is temporarily supported for fake modes.\n");
 }
 
@@ -155,6 +163,24 @@ static int vfr_parse_args(int argc, char** argv, VFR_RunnerArgs* args) {
                 return 0;
             }
             args->has_gain_floor = 1;
+        } else if (strcmp(argv[i], "--fof-b0") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_b0)) {
+                return 0;
+            }
+            args->has_fof_b0 = 1;
+        } else if (strcmp(argv[i], "--fof-b1") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_b1)) {
+                return 0;
+            }
+            args->has_fof_b1 = 1;
+        } else if (strcmp(argv[i], "--fof-a1") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_a1)) {
+                return 0;
+            }
+            args->has_fof_a1 = 1;
         } else if (strcmp(argv[i], "--freq-file") == 0) {
             if (!vfr_take_value(argc, argv, &i, &args->freq_file_path)) {
                 return 0;
@@ -234,6 +260,7 @@ static void vfr_write_bad_frequency_row(FILE* out,
 int main(int argc, char** argv) {
     VFR_RunnerArgs args;
     VFR_TestSubject subject;
+    VFR_FofSubject fof_subject;
     FILE* freq_file;
     FILE* out;
     char line[256];
@@ -247,14 +274,29 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    if (strcmp(args.module_name, "fake") != 0) {
+    if (strcmp(args.module_name, "fake") == 0) {
+        if (!VFR_GetFakeSubjectByMode(args.mode_name, &subject)) {
+            fprintf(stderr, "unsupported fake mode: %s\n", args.mode_name);
+            return 2;
+        }
+    } else if (strcmp(args.module_name, "fof") == 0) {
+        if (strcmp(args.mode_name, "discrete") != 0) {
+            fprintf(stderr, "unsupported fof mode: %s\n", args.mode_name);
+            return 2;
+        }
+        if (!args.has_fof_b0 || !args.has_fof_b1 || !args.has_fof_a1) {
+            fprintf(stderr,
+                    "fof discrete requires --fof-b0, --fof-b1, and --fof-a1\n");
+            return 2;
+        }
+        if (!VFR_InitFofDiscreteSubject(&fof_subject, &subject, (float)args.fof_b0,
+                                        (float)args.fof_b1, (float)args.fof_a1)) {
+            fprintf(stderr, "failed to initialize fof discrete subject\n");
+            return 2;
+        }
+    } else {
         fprintf(stderr, "unsupported module: %s\n", args.module_name);
-        fprintf(stderr, "currently supported modules: fake\n");
-        return 2;
-    }
-
-    if (!VFR_GetFakeSubjectByMode(args.mode_name, &subject)) {
-        fprintf(stderr, "unsupported fake mode: %s\n", args.mode_name);
+        fprintf(stderr, "currently supported modules: fake, fof\n");
         return 2;
     }
 
