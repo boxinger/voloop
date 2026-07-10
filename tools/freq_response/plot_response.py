@@ -45,6 +45,12 @@ REQUIRED_FIELDS = [
 ]
 
 VALID_STATUSES = {"ok", "ok_with_gain_floor"}
+MISSING_DEPENDENCY_MESSAGE = (
+    "Missing dependency: numpy or matplotlib.\n"
+    "Install dependencies with:\n"
+    "  cd tools\n"
+    "  uv sync"
+)
 
 
 @dataclass
@@ -57,7 +63,7 @@ class ValidPoint:
     mode: str
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Render VOLOOP raw frequency response CSV into processed CSV plus PNG/SVG Bode plots.",
         epilog=(
@@ -76,16 +82,16 @@ def parse_args() -> argparse.Namespace:
         default=80,
         help="Interpolated points per decade when --interpolate is enabled. Default: 80.",
     )
-    return parser.parse_args()
-
-
-def fail(message: str) -> int:
-    print(f"error: {message}", file=sys.stderr)
-    return 1
+    return parser.parse_args(argv)
 
 
 def warn(message: str) -> None:
     print(f"warning: {message}", file=sys.stderr)
+
+
+def require_plot_dependencies() -> None:
+    if np is None or plt is None:
+        raise RuntimeError(MISSING_DEPENDENCY_MESSAGE)
 
 
 def parse_finite_float(value: str) -> float | None:
@@ -113,49 +119,40 @@ def row_is_plot_valid(row: dict[str, str]) -> tuple[bool, float | None, float | 
     return is_valid, frequency_hz, gain_db, phase_deg
 
 
-def read_raw_csv(input_path: Path) -> tuple[list[str], list[dict[str, str]], list[ValidPoint], set[tuple[str, str]]] | None:
-    try:
-        with input_path.open("r", newline="", encoding="utf-8-sig") as csv_file:
-            reader = csv.DictReader(csv_file)
-            if reader.fieldnames is None:
-                print(f"error: input CSV has no header: {input_path}", file=sys.stderr)
-                return None
+def read_raw_csv(input_path: Path) -> tuple[list[str], list[dict[str, str]], list[ValidPoint], set[tuple[str, str]]]:
+    with input_path.open("r", newline="", encoding="utf-8-sig") as csv_file:
+        reader = csv.DictReader(csv_file)
+        if reader.fieldnames is None:
+            raise ValueError(f"input CSV has no header: {input_path}")
 
-            missing_fields = [field for field in REQUIRED_FIELDS if field not in reader.fieldnames]
-            if missing_fields:
-                print(
-                    "error: input CSV is missing required field(s): " + ", ".join(missing_fields),
-                    file=sys.stderr,
-                )
-                return None
+        missing_fields = [field for field in REQUIRED_FIELDS if field not in reader.fieldnames]
+        if missing_fields:
+            raise ValueError("input CSV is missing required field(s): " + ", ".join(missing_fields))
 
-            rows: list[dict[str, str]] = []
-            valid_points: list[ValidPoint] = []
-            module_mode_pairs: set[tuple[str, str]] = set()
+        rows: list[dict[str, str]] = []
+        valid_points: list[ValidPoint] = []
+        module_mode_pairs: set[tuple[str, str]] = set()
 
-            for row_index, row in enumerate(reader):
-                rows.append(row)
-                module = row.get("module", "")
-                mode = row.get("mode", "")
-                module_mode_pairs.add((module, mode))
+        for row_index, row in enumerate(reader):
+            rows.append(row)
+            module = row.get("module", "")
+            mode = row.get("mode", "")
+            module_mode_pairs.add((module, mode))
 
-                is_valid, frequency_hz, gain_db, phase_deg = row_is_plot_valid(row)
-                if is_valid:
-                    valid_points.append(
-                        ValidPoint(
-                            row_index=row_index,
-                            frequency_hz=frequency_hz,
-                            gain_db=gain_db,
-                            phase_deg=phase_deg,
-                            module=module,
-                            mode=mode,
-                        )
+            is_valid, frequency_hz, gain_db, phase_deg = row_is_plot_valid(row)
+            if is_valid:
+                valid_points.append(
+                    ValidPoint(
+                        row_index=row_index,
+                        frequency_hz=frequency_hz,
+                        gain_db=gain_db,
+                        phase_deg=phase_deg,
+                        module=module,
+                        mode=mode,
                     )
+                )
 
-            return reader.fieldnames, rows, valid_points, module_mode_pairs
-    except OSError as exc:
-        print(f"error: failed to read input CSV: {exc}", file=sys.stderr)
-        return None
+        return reader.fieldnames, rows, valid_points, module_mode_pairs
 
 
 def unique_sorted_points(valid_points: list[ValidPoint]) -> list[ValidPoint]:
@@ -291,47 +288,39 @@ def plot_bode(
     plt.close(fig)
 
 
-def main() -> int:
-    args = parse_args()
+def render_response(
+    input_csv: Path,
+    out_dir: Path,
+    name: str | None = None,
+    interpolate: bool = False,
+    interp_points_per_decade: int = 80,
+) -> tuple[Path, Path, Path]:
+    require_plot_dependencies()
 
-    if np is None or plt is None:
-        print(
-            "Missing dependency: numpy or matplotlib.\n"
-            "Install dependencies with:\n"
-            "  cd tools\n"
-            "  uv sync",
-            file=sys.stderr,
-        )
-        return 1
-
-    input_path = args.input
-    out_dir = args.out_dir
-    name = args.name or input_path.stem
+    input_path = Path(input_csv)
+    output_dir = Path(out_dir)
+    output_name = name or input_path.stem
 
     if not input_path.exists():
-        return fail(f"input CSV does not exist: {input_path}")
+        raise FileNotFoundError(f"input CSV does not exist: {input_path}")
     if not input_path.is_file():
-        return fail(f"input path is not a file: {input_path}")
+        raise OSError(f"input path is not a file: {input_path}")
 
-    raw_data = read_raw_csv(input_path)
-    if raw_data is None:
-        return 1
-
-    fieldnames, rows, valid_points, module_mode_pairs = raw_data
+    fieldnames, rows, valid_points, module_mode_pairs = read_raw_csv(input_path)
     plot_points = unique_sorted_points(valid_points)
     if not plot_points:
-        return fail("input CSV has no valid plotting points")
+        raise ValueError("input CSV has no valid plotting points")
 
     if len(module_mode_pairs) > 1:
         warn("input CSV contains multiple module/mode pairs; plotting all valid rows as one curve")
 
-    out_dir.mkdir(parents=True, exist_ok=True)
-    processed_path = out_dir / f"{name}_processed.csv"
-    png_path = out_dir / f"{name}_bode.png"
-    svg_path = out_dir / f"{name}_bode.svg"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    processed_path = output_dir / f"{output_name}_processed.csv"
+    png_path = output_dir / f"{output_name}_bode.png"
+    svg_path = output_dir / f"{output_name}_bode.svg"
 
     if processed_path.resolve() == input_path.resolve():
-        return fail(f"processed CSV output would overwrite input raw CSV: {processed_path}")
+        raise ValueError(f"processed CSV output would overwrite input raw CSV: {processed_path}")
 
     add_processed_columns(rows, valid_points)
     write_processed_csv(processed_path, fieldnames, rows)
@@ -341,13 +330,38 @@ def main() -> int:
         input_path=input_path,
         plot_points=plot_points,
         module_mode_pairs=module_mode_pairs,
-        interpolate=args.interpolate,
-        points_per_decade=args.interp_points_per_decade,
+        interpolate=interpolate,
+        points_per_decade=interp_points_per_decade,
     )
 
-    print(f"processed_csv: {processed_path}")
-    print(f"bode_png: {png_path}")
-    print(f"bode_svg: {svg_path}")
+    return processed_path, png_path, svg_path
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+
+    try:
+        processed_path, png_path, svg_path = render_response(
+            input_csv=args.input,
+            out_dir=args.out_dir,
+            name=args.name,
+            interpolate=args.interpolate,
+            interp_points_per_decade=args.interp_points_per_decade,
+        )
+    except RuntimeError as exc:
+        message = str(exc)
+        if message == MISSING_DEPENDENCY_MESSAGE:
+            print(message, file=sys.stderr)
+        else:
+            print(f"error: {message}", file=sys.stderr)
+        return 1
+    except (OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"processed CSV: {processed_path}")
+    print(f"PNG: {png_path}")
+    print(f"SVG: {svg_path}")
     return 0
 
 
