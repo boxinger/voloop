@@ -20,6 +20,14 @@ typedef struct {
     double fof_b1;
     double fof_a1;
     double fof_cutoff_hz;
+    double fof_zero_hz;
+    double fof_pole_hz;
+    double fof_gain;
+    double fof_cont_k;
+    double fof_cont_b0;
+    double fof_cont_b1;
+    double fof_cont_a0;
+    double fof_cont_a1;
     int has_sample_rate_hz;
     int has_input_amplitude;
     int has_warmup_cycles;
@@ -32,6 +40,14 @@ typedef struct {
     int has_fof_b1;
     int has_fof_a1;
     int has_fof_cutoff_hz;
+    int has_fof_zero_hz;
+    int has_fof_pole_hz;
+    int has_fof_gain;
+    int has_fof_cont_k;
+    int has_fof_cont_b0;
+    int has_fof_cont_b1;
+    int has_fof_cont_a0;
+    int has_fof_cont_a1;
 } VFR_RunnerArgs;
 
 static void vfr_print_usage(FILE* stream) {
@@ -43,6 +59,9 @@ static void vfr_print_usage(FILE* stream) {
             "--freq-file PATH [--out PATH]\n"
             "FOF discrete: --module fof --mode discrete --fof-b0 B0 --fof-b1 B1 --fof-a1 A1\n"
             "FOF filters: --module fof --mode low_pass|high_pass --fof-cutoff-hz HZ\n"
+            "FOF lead-lag: --module fof --mode lead_lag --fof-zero-hz HZ --fof-pole-hz HZ --fof-gain GAIN\n"
+            "FOF continue: --module fof --mode continue --fof-cont-k K --fof-cont-b0 B0 "
+            "--fof-cont-b1 B1 --fof-cont-a0 A0 --fof-cont-a1 A1\n"
             "Legacy: --subject NAME is temporarily supported for fake modes.\n");
 }
 
@@ -190,6 +209,54 @@ static int vfr_parse_args(int argc, char** argv, VFR_RunnerArgs* args) {
                 return 0;
             }
             args->has_fof_cutoff_hz = 1;
+        } else if (strcmp(argv[i], "--fof-zero-hz") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_zero_hz)) {
+                return 0;
+            }
+            args->has_fof_zero_hz = 1;
+        } else if (strcmp(argv[i], "--fof-pole-hz") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_pole_hz)) {
+                return 0;
+            }
+            args->has_fof_pole_hz = 1;
+        } else if (strcmp(argv[i], "--fof-gain") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_gain)) {
+                return 0;
+            }
+            args->has_fof_gain = 1;
+        } else if (strcmp(argv[i], "--fof-cont-k") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_cont_k)) {
+                return 0;
+            }
+            args->has_fof_cont_k = 1;
+        } else if (strcmp(argv[i], "--fof-cont-b0") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_cont_b0)) {
+                return 0;
+            }
+            args->has_fof_cont_b0 = 1;
+        } else if (strcmp(argv[i], "--fof-cont-b1") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_cont_b1)) {
+                return 0;
+            }
+            args->has_fof_cont_b1 = 1;
+        } else if (strcmp(argv[i], "--fof-cont-a0") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_cont_a0)) {
+                return 0;
+            }
+            args->has_fof_cont_a0 = 1;
+        } else if (strcmp(argv[i], "--fof-cont-a1") == 0) {
+            if (!vfr_take_value(argc, argv, &i, &value) ||
+                !vfr_parse_double(value, &args->fof_cont_a1)) {
+                return 0;
+            }
+            args->has_fof_cont_a1 = 1;
         } else if (strcmp(argv[i], "--freq-file") == 0) {
             if (!vfr_take_value(argc, argv, &i, &args->freq_file_path)) {
                 return 0;
@@ -245,6 +312,33 @@ static int vfr_validate_fof_cutoff(const VFR_RunnerArgs* args) {
            args->fof_cutoff_hz < (args->config.sample_rate_hz * 0.5);
 }
 
+static int vfr_validate_fof_lead_lag(const VFR_RunnerArgs* args) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_fof_zero_hz && args->has_fof_pole_hz && args->has_fof_gain &&
+           args->fof_zero_hz > 0.0 &&
+           args->fof_pole_hz > 0.0 &&
+           args->fof_zero_hz < (args->config.sample_rate_hz * 0.5) &&
+           args->fof_pole_hz < (args->config.sample_rate_hz * 0.5) &&
+           isfinite(args->fof_gain);
+}
+
+static int vfr_validate_fof_continue(const VFR_RunnerArgs* args) {
+    if (args == NULL) {
+        return 0;
+    }
+
+    return args->has_fof_cont_k && args->has_fof_cont_b0 && args->has_fof_cont_b1 &&
+           args->has_fof_cont_a0 && args->has_fof_cont_a1 &&
+           isfinite(args->fof_cont_k) &&
+           isfinite(args->fof_cont_b0) &&
+           isfinite(args->fof_cont_b1) &&
+           isfinite(args->fof_cont_a0) &&
+           isfinite(args->fof_cont_a1);
+}
+
 static void vfr_write_csv_header(FILE* out) {
     fprintf(out,
             "module,mode,sample_rate_hz,frequency_hz,input_amplitude,output_amplitude,"
@@ -298,36 +392,7 @@ int main(int argc, char** argv) {
             return 2;
         }
     } else if (strcmp(args.module_name, "fof") == 0) {
-        if (strcmp(args.mode_name, "discrete") != 0) {
-            if (strcmp(args.mode_name, "low_pass") == 0) {
-                if (!vfr_validate_fof_cutoff(&args)) {
-                    fprintf(stderr,
-                            "fof cutoff frequency must be > 0 and < sample_rate_hz / 2\n");
-                    return 2;
-                }
-                if (!VFR_InitFofLowPassSubject(&fof_subject, &subject,
-                                               (float)args.fof_cutoff_hz,
-                                               (float)args.config.sample_rate_hz)) {
-                    fprintf(stderr, "failed to initialize fof low_pass subject\n");
-                    return 2;
-                }
-            } else if (strcmp(args.mode_name, "high_pass") == 0) {
-                if (!vfr_validate_fof_cutoff(&args)) {
-                    fprintf(stderr,
-                            "fof cutoff frequency must be > 0 and < sample_rate_hz / 2\n");
-                    return 2;
-                }
-                if (!VFR_InitFofHighPassSubject(&fof_subject, &subject,
-                                                (float)args.fof_cutoff_hz,
-                                                (float)args.config.sample_rate_hz)) {
-                    fprintf(stderr, "failed to initialize fof high_pass subject\n");
-                    return 2;
-                }
-            } else {
-                fprintf(stderr, "unsupported fof mode: %s\n", args.mode_name);
-                return 2;
-            }
-        } else {
+        if (strcmp(args.mode_name, "discrete") == 0) {
             if (!args.has_fof_b0 || !args.has_fof_b1 || !args.has_fof_a1) {
                 fprintf(stderr,
                         "fof discrete requires --fof-b0, --fof-b1, and --fof-a1\n");
@@ -338,6 +403,65 @@ int main(int argc, char** argv) {
                 fprintf(stderr, "failed to initialize fof discrete subject\n");
                 return 2;
             }
+        } else if (strcmp(args.mode_name, "low_pass") == 0) {
+            if (!vfr_validate_fof_cutoff(&args)) {
+                fprintf(stderr,
+                        "fof cutoff frequency must be > 0 and < sample_rate_hz / 2\n");
+                return 2;
+            }
+            if (!VFR_InitFofLowPassSubject(&fof_subject, &subject,
+                                           (float)args.fof_cutoff_hz,
+                                           (float)args.config.sample_rate_hz)) {
+                fprintf(stderr, "failed to initialize fof low_pass subject\n");
+                return 2;
+            }
+        } else if (strcmp(args.mode_name, "high_pass") == 0) {
+            if (!vfr_validate_fof_cutoff(&args)) {
+                fprintf(stderr,
+                        "fof cutoff frequency must be > 0 and < sample_rate_hz / 2\n");
+                return 2;
+            }
+            if (!VFR_InitFofHighPassSubject(&fof_subject, &subject,
+                                            (float)args.fof_cutoff_hz,
+                                            (float)args.config.sample_rate_hz)) {
+                fprintf(stderr, "failed to initialize fof high_pass subject\n");
+                return 2;
+            }
+        } else if (strcmp(args.mode_name, "lead_lag") == 0) {
+            if (!vfr_validate_fof_lead_lag(&args)) {
+                fprintf(stderr,
+                        "fof lead_lag requires --fof-zero-hz > 0, --fof-pole-hz > 0, "
+                        "both < sample_rate_hz / 2, and finite --fof-gain\n");
+                return 2;
+            }
+            if (!VFR_InitFofLeadLagSubject(&fof_subject, &subject,
+                                           (float)args.fof_zero_hz,
+                                           (float)args.fof_pole_hz,
+                                           (float)args.fof_gain,
+                                           (float)args.config.sample_rate_hz)) {
+                fprintf(stderr, "failed to initialize fof lead_lag subject\n");
+                return 2;
+            }
+        } else if (strcmp(args.mode_name, "continue") == 0) {
+            if (!vfr_validate_fof_continue(&args)) {
+                fprintf(stderr,
+                        "fof continue requires finite --fof-cont-k, --fof-cont-b0, "
+                        "--fof-cont-b1, --fof-cont-a0, and --fof-cont-a1\n");
+                return 2;
+            }
+            if (!VFR_InitFofContinueSubject(&fof_subject, &subject,
+                                            (float)args.fof_cont_k,
+                                            (float)args.fof_cont_b0,
+                                            (float)args.fof_cont_b1,
+                                            (float)args.fof_cont_a0,
+                                            (float)args.fof_cont_a1,
+                                            (float)args.config.sample_rate_hz)) {
+                fprintf(stderr, "failed to initialize fof continue subject\n");
+                return 2;
+            }
+        } else {
+            fprintf(stderr, "unsupported fof mode: %s\n", args.mode_name);
+            return 2;
         }
     } else {
         fprintf(stderr, "unsupported module: %s\n", args.module_name);
