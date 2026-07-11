@@ -10,6 +10,13 @@ add_subdirectory(core)
 
 if(VOLOOP_BUILD_TESTS)
     include(CTest)
+endif()
+
+if(VOLOOP_BUILD_TOOLS)
+    add_subdirectory(tools)
+endif()
+
+if(VOLOOP_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 

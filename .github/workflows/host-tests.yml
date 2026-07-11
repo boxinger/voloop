@@ -22,11 +22,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build gcc
 
-      - name: Configure host tests
-        run: cmake --preset host-tests
+      - name: Configure host all
+        run: cmake --preset host-all
 
-      - name: Build host tests
-        run: cmake --build --preset host-tests --verbose
+      - name: Build host all
+        run: cmake --build --preset host-all --verbose
 
-      - name: Run host tests
-        run: ctest --preset host-tests
+      - name: Run host all
+        run: ctest --preset host-all

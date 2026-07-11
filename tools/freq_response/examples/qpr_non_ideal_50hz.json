@@ -3,9 +3,7 @@
   "module": "qpr",
   "mode": "non_ideal",
   "runner": {
-    "executable": "../../../build/tools/freq_response/voloop_freq_response_runner",
-    "build_dir": "../../../build/tools/freq_response",
-    "target": "voloop_freq_response_runner"
+    "executable": "../../../build/host-tools/tools/freq_response/voloop_freq_response_runner"
   },
   "paths": {
     "frequencies": "../../../build/tools/freq_response/frequencies.txt",

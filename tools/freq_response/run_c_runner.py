@@ -26,7 +26,6 @@ class RunnerResult:
     stdout: str
     stderr: str
     warnings: list[str]
-    build_command: list[str] | None = None
 
 
 def load_config(config_file: Path) -> dict[str, Any]:
@@ -64,10 +63,6 @@ def resolve_runner_executable(config_file: Path, value: str | Path) -> Path:
 
 def measurement_key_to_cli_option(key: str) -> str:
     return "--" + key.replace("_", "-")
-
-
-def build_cmake_command(build_dir: Path, target: str) -> list[str]:
-    return ["cmake", "--build", str(build_dir), "--target", target]
 
 
 def _require_mapping(config: dict[str, Any], key: str) -> dict[str, Any]:
@@ -167,14 +162,6 @@ def build_runner_command(
     return command
 
 
-def build_runner(
-    build_dir: Path,
-    target: str,
-) -> subprocess.CompletedProcess[str]:
-    command = build_cmake_command(build_dir, target)
-    return subprocess.run(command, check=True, capture_output=True, text=True)
-
-
 def run_c_runner(
     command: list[str],
     timeout_s: float | None = None,
@@ -214,15 +201,6 @@ def _resolve_runner_for_validation(
     return resolve_runner_executable(config_file, runner_value)
 
 
-def _resolve_build_inputs(config: dict[str, Any], config_file: Path) -> tuple[Path, str]:
-    runner = _require_mapping(config, "runner")
-    build_dir_value = _require_path_value(runner, "build_dir", "runner.build_dir")
-    target = runner.get("target")
-    if not isinstance(target, str) or not target:
-        raise ValueError("config field 'runner.target' must be a non-empty string when --build is used")
-    return resolve_config_path(config_file, build_dir_value), target
-
-
 def _validate_for_run(
     runner_executable: Path,
     frequencies: Path,
@@ -251,7 +229,6 @@ def run_from_config(
     config_file: Path,
     runner_override: Path | None = None,
     output_override: Path | None = None,
-    build: bool = False,
     dry_run: bool = False,
     timeout_s: float | None = None,
 ) -> RunnerResult:
@@ -267,14 +244,6 @@ def run_from_config(
         output_override=output_override,
     )
 
-    build_command = None
-    stdout_parts: list[str] = []
-    stderr_parts: list[str] = []
-
-    if build:
-        build_dir, target = _resolve_build_inputs(config, config_path)
-        build_command = build_cmake_command(build_dir, target)
-
     if dry_run:
         runner_path = _resolve_runner_for_validation(config, config_path, runner_override)
         warnings = _validate_for_run(runner_path, frequencies, dry_run=True)
@@ -282,25 +251,13 @@ def run_from_config(
             command=command,
             raw_csv=raw_csv,
             returncode=0,
-            stdout="".join(stdout_parts),
-            stderr="".join(stderr_parts),
+            stdout="",
+            stderr="",
             warnings=warnings,
-            build_command=build_command,
         )
 
     if not frequencies.exists():
         raise FileNotFoundError(f"frequencies file does not exist: {frequencies}")
-
-    if build:
-        build_result = build_runner(build_dir, target)
-        stdout_parts.append(build_result.stdout)
-        stderr_parts.append(build_result.stderr)
-        command = build_runner_command(
-            config=config,
-            config_file=config_path,
-            runner_override=runner_override,
-            output_override=output_override,
-        )
 
     runner_path = _resolve_runner_for_validation(config, config_path, runner_override)
     if not runner_path.exists():
@@ -308,17 +265,14 @@ def run_from_config(
 
     raw_csv.parent.mkdir(parents=True, exist_ok=True)
     run_result = run_c_runner(command, timeout_s=timeout_s)
-    stdout_parts.append(run_result.stdout)
-    stderr_parts.append(run_result.stderr)
 
     return RunnerResult(
         command=command,
         raw_csv=raw_csv,
         returncode=run_result.returncode,
-        stdout="".join(stdout_parts),
-        stderr="".join(stderr_parts),
+        stdout=run_result.stdout,
+        stderr=run_result.stderr,
         warnings=[],
-        build_command=build_command,
     )
 
 
@@ -337,8 +291,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="Override config['paths']['raw_csv']. Relative paths use the current directory.",
     )
-    parser.add_argument("--build", action="store_true", help="Run cmake --build before the C runner.")
-    parser.add_argument("--dry-run", action="store_true", help="Print commands without running CMake or the C runner.")
+    parser.add_argument("--dry-run", action="store_true", help="Print the C runner command without running it.")
     parser.add_argument("--timeout", type=float, help="C runner timeout in seconds.")
     return parser.parse_args(argv)
 
@@ -370,7 +323,6 @@ def main(argv: list[str] | None = None) -> int:
             config_file=args.config,
             runner_override=args.runner,
             output_override=args.output,
-            build=args.build,
             dry_run=args.dry_run,
             timeout_s=args.timeout,
         )
@@ -392,8 +344,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"warning: {warning}", file=sys.stderr)
 
     if args.dry_run:
-        if result.build_command is not None:
-            print(_join_command(result.build_command))
         print(_join_command(result.command))
         return 0
 

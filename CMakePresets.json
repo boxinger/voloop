@@ -30,6 +30,24 @@
       }
     },
     {
+      "name": "host-tools",
+      "inherits": "host-base",
+      "cacheVariables": {
+        "VOLOOP_BUILD_TESTS": "OFF",
+        "VOLOOP_BUILD_DOCS": "OFF",
+        "VOLOOP_BUILD_TOOLS": "ON"
+      }
+    },
+    {
+      "name": "host-all",
+      "inherits": "host-base",
+      "cacheVariables": {
+        "VOLOOP_BUILD_TESTS": "ON",
+        "VOLOOP_BUILD_TOOLS": "ON",
+        "VOLOOP_BUILD_DOCS": "OFF"
+      }
+    },
+    {
       "name": "host-debug",
       "inherits": "host-base",
       "cacheVariables": {
@@ -60,6 +78,14 @@
       "configurePreset": "host-tests"
     },
     {
+      "name": "host-tools",
+      "configurePreset": "host-tools"
+    },
+    {
+      "name": "host-all",
+      "configurePreset": "host-all"
+    },
+    {
       "name": "host-debug",
       "configurePreset": "host-debug"
     },
@@ -75,6 +101,16 @@
     {
       "name": "host-tests",
       "configurePreset": "host-tests",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "host-all",
+      "configurePreset": "host-all",
       "output": {
         "outputOnFailure": true
       },

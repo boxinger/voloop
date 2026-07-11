@@ -1,19 +1,3 @@
-cmake_minimum_required(VERSION 3.22)
-
-project(voloop_freq_response_tools LANGUAGES C)
-
-if(NOT TARGET voloop::voloop)
-    add_subdirectory(
-        ${CMAKE_CURRENT_LIST_DIR}/../../core
-        ${CMAKE_CURRENT_BINARY_DIR}/voloop_core
-    )
-endif()
-
-add_executable(vfr_point_measure_test
-    runner/test_point_measure_main.c
-    runner/vfr_point_measure.c
-)
-
 add_executable(voloop_freq_response_runner
     runner/main.c
     runner/vfr_fake_subjects.c
@@ -23,31 +7,15 @@ add_executable(voloop_freq_response_runner
     runner/vfr_point_measure.c
 )
 
-target_include_directories(vfr_point_measure_test
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/runner
-)
-
 target_include_directories(voloop_freq_response_runner
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/runner
         ${CMAKE_CURRENT_SOURCE_DIR}/runner/modules
 )
 
-target_compile_features(vfr_point_measure_test
-    PRIVATE
-        c_std_99
-)
-
 target_compile_features(voloop_freq_response_runner
     PRIVATE
         c_std_99
-)
-
-set_target_properties(vfr_point_measure_test PROPERTIES
-    C_STANDARD 99
-    C_STANDARD_REQUIRED ON
-    C_EXTENSIONS OFF
 )
 
 set_target_properties(voloop_freq_response_runner PROPERTIES
@@ -56,12 +24,47 @@ set_target_properties(voloop_freq_response_runner PROPERTIES
     C_EXTENSIONS OFF
 )
 
-if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-    target_link_libraries(vfr_point_measure_test PRIVATE m)
-    target_link_libraries(voloop_freq_response_runner PRIVATE m)
-endif()
-
 target_link_libraries(voloop_freq_response_runner
     PRIVATE
         voloop::voloop
 )
+
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_libraries(voloop_freq_response_runner PRIVATE m)
+endif()
+
+if(VOLOOP_BUILD_TESTS)
+    add_executable(vfr_point_measure_test
+        runner/test_point_measure_main.c
+        runner/vfr_point_measure.c
+    )
+
+    target_include_directories(vfr_point_measure_test
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/runner
+    )
+
+    target_compile_features(vfr_point_measure_test
+        PRIVATE
+            c_std_99
+    )
+
+    set_target_properties(vfr_point_measure_test PROPERTIES
+        C_STANDARD 99
+        C_STANDARD_REQUIRED ON
+        C_EXTENSIONS OFF
+    )
+
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_link_libraries(vfr_point_measure_test PRIVATE m)
+    endif()
+
+    add_test(
+        NAME vfr_point_measure_test
+        COMMAND $<TARGET_FILE:vfr_point_measure_test>
+    )
+
+    set_tests_properties(vfr_point_measure_test PROPERTIES
+        LABELS "L2;property;tool;freq_response"
+    )
+endif()
