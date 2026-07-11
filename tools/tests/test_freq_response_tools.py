@@ -302,6 +302,7 @@ def test_examples_use_schema_v1_and_new_frequency_fields() -> None:
         assert config["frequencies"]["values_hz"]
         assert "frequencies_txt" in config["artifacts"]
         assert "raw_csv" in config["artifacts"]
+        assert "/csv/" in config["artifacts"]["raw_csv"].replace("\\", "/")
         run_c_runner.read_frequency_values(config)
 
 

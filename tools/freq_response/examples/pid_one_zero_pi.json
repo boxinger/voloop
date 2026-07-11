@@ -17,7 +17,7 @@
   },
   "artifacts": {
     "frequencies_txt": "../../../build/tools/freq_response/pid_one_zero_pi_frequencies.txt",
-    "raw_csv": "../../../build/tools/freq_response/pid_one_zero_pi_raw.csv"
+    "raw_csv": "../../../build/tools/freq_response/csv/pid_one_zero_pi_raw.csv"
   },
   "measurement": {
     "sample_rate_hz": 10000,

@@ -93,7 +93,7 @@
   },
   "artifacts": {
     "frequencies_txt": "../../../build/tools/freq_response/qpr_non_ideal_50hz_frequencies.txt",
-    "raw_csv": "../../../build/tools/freq_response/qpr_non_ideal_50hz_raw.csv"
+    "raw_csv": "../../../build/tools/freq_response/csv/qpr_non_ideal_50hz_raw.csv"
   },
   "measurement": {
     "sample_rate_hz": 10000,
