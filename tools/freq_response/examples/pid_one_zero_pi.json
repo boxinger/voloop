@@ -1,0 +1,28 @@
+{
+  "name": "pid_one_zero_pi",
+  "module": "pid",
+  "mode": "one_zero",
+  "runner": {
+    "executable": "../../../build/tools/freq_response/voloop_freq_response_runner",
+    "build_dir": "../../../build",
+    "target": "voloop_freq_response_runner"
+  },
+  "paths": {
+    "frequencies": "../../../build/tools/freq_response/frequencies.txt",
+    "raw_csv": "../../../build/tools/freq_response/pid_one_zero_pi_raw.csv"
+  },
+  "measurement": {
+    "sample_rate_hz": 10000,
+    "input_amplitude": 1.0,
+    "warmup_cycles": 20,
+    "measure_cycles": 10,
+    "min_samples_per_cycle": 32,
+    "max_samples_per_point": 200000,
+    "output_abs_limit": 1000000,
+    "gain_floor": 1e-12
+  },
+  "params": {
+    "pid-gain": 1.0,
+    "pid-zero-hz": 100.0
+  }
+}
