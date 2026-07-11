@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import inspect
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from freq_response import generate_frequencies
+from freq_response import plot_response
 from freq_response import run_c_runner
 
 
@@ -303,6 +305,74 @@ def test_examples_use_schema_v1_and_new_frequency_fields() -> None:
         run_c_runner.read_frequency_values(config)
 
 
+def test_plot_response_parse_args_accepts_core_options() -> None:
+    args = plot_response.parse_args(
+        [
+            "--input",
+            "raw.csv",
+            "--out-dir",
+            "plots",
+            "--name",
+            "response",
+        ]
+    )
+
+    assert args.input == Path("raw.csv")
+    assert args.out_dir == Path("plots")
+    assert args.name == "response"
+
+
+@pytest.mark.parametrize("removed_arg", ["--interpolate", "--interp-points-per-decade"])
+def test_plot_response_parse_args_rejects_removed_interpolation_options(removed_arg: str) -> None:
+    argv = [
+        "--input",
+        "raw.csv",
+        "--out-dir",
+        "plots",
+        removed_arg,
+    ]
+    if removed_arg == "--interp-points-per-decade":
+        argv.append("80")
+
+    with pytest.raises(SystemExit):
+        plot_response.parse_args(argv)
+
+
+def test_plot_response_no_longer_exposes_interpolation_api() -> None:
+    assert not hasattr(plot_response, "interpolated_curve")
+    signature = inspect.signature(plot_response.render_response)
+    assert list(signature.parameters) == ["input_csv", "out_dir", "name"]
+
+
+def test_plot_response_render_response_generates_outputs(tmp_path: Path) -> None:
+    raw_csv = tmp_path / "raw.csv"
+    raw_csv.write_text(
+        "\n".join(
+            [
+                ",".join(plot_response.REQUIRED_FIELDS),
+                "pid,one_zero,10000,10,1.0,1.0,1.0,0.0,0.0,2000,1000,3000,ok",
+                "pid,one_zero,10000,20,1.0,2.0,2.0,6.02059991328,-45.0,1000,1000,2000,ok",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    processed_path, png_path, svg_path = plot_response.render_response(
+        input_csv=raw_csv,
+        out_dir=tmp_path / "plots",
+        name="pid_response",
+    )
+
+    assert processed_path.exists()
+    assert png_path.exists()
+    assert svg_path.exists()
+    processed_csv = processed_path.read_text(encoding="utf-8")
+    assert "phase_unwrapped_deg" in processed_csv
+    assert "plot_valid" in processed_csv
+
+
 def test_modules_import_without_side_effects() -> None:
     assert generate_frequencies.main is not None
+    assert plot_response.main is not None
     assert run_c_runner.main is not None

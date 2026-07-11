@@ -75,13 +75,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--input", required=True, type=Path, help="Input raw CSV path.")
     parser.add_argument("--out-dir", required=True, type=Path, help="Directory for processed CSV and Bode plots.")
     parser.add_argument("--name", help="Output file stem. Defaults to input CSV filename without extension.")
-    parser.add_argument("--interpolate", action="store_true", help="Add lighter log-frequency interpolation curves to plots.")
-    parser.add_argument(
-        "--interp-points-per-decade",
-        type=int,
-        default=80,
-        help="Interpolated points per decade when --interpolate is enabled. Default: 80.",
-    )
     return parser.parse_args(argv)
 
 
@@ -202,51 +195,18 @@ def write_processed_csv(output_path: Path, fieldnames: list[str], rows: list[dic
         writer.writerows(rows)
 
 
-def interpolated_curve(
-    frequencies: np.ndarray,
-    values: np.ndarray,
-    points_per_decade: int,
-) -> tuple[np.ndarray, np.ndarray] | None:
-    if len(frequencies) < 2:
-        return None
-
-    if points_per_decade <= 0:
-        return None
-
-    log_frequencies = np.log10(frequencies)
-    decades = log_frequencies[-1] - log_frequencies[0]
-    point_count = max(int(math.ceil(decades * points_per_decade)) + 1, len(frequencies))
-    interp_log_frequencies = np.linspace(log_frequencies[0], log_frequencies[-1], point_count)
-    interp_frequencies = np.power(10.0, interp_log_frequencies)
-    interp_values = np.interp(interp_log_frequencies, log_frequencies, values)
-    return interp_frequencies, interp_values
-
-
 def plot_bode(
     png_path: Path,
     svg_path: Path,
     input_path: Path,
     plot_points: list[ValidPoint],
     module_mode_pairs: set[tuple[str, str]],
-    interpolate: bool,
-    points_per_decade: int,
 ) -> None:
     frequencies = np.array([point.frequency_hz for point in plot_points], dtype=float)
     gains = np.array([point.gain_db for point in plot_points], dtype=float)
     phases = np.rad2deg(np.unwrap(np.deg2rad(np.array([point.phase_deg for point in plot_points], dtype=float))))
 
     fig, (gain_axis, phase_axis) = plt.subplots(2, 1, figsize=(9.5, 7.0), sharex=True)
-
-    if interpolate and len(frequencies) < 2:
-        warn("interpolation requested but fewer than 2 unique valid frequency points are available; skipping interpolation")
-    elif interpolate and points_per_decade <= 0:
-        warn("interpolation requested with non-positive --interp-points-per-decade; skipping interpolation")
-    elif interpolate:
-        gain_interp = interpolated_curve(frequencies, gains, points_per_decade)
-        phase_interp = interpolated_curve(frequencies, phases, points_per_decade)
-        if gain_interp is not None and phase_interp is not None:
-            gain_axis.plot(gain_interp[0], gain_interp[1], color="tab:blue", alpha=0.35, linewidth=1.0)
-            phase_axis.plot(phase_interp[0], phase_interp[1], color="tab:orange", alpha=0.35, linewidth=1.0)
 
     gain_axis.plot(
         frequencies,
@@ -292,8 +252,6 @@ def render_response(
     input_csv: Path,
     out_dir: Path,
     name: str | None = None,
-    interpolate: bool = False,
-    interp_points_per_decade: int = 80,
 ) -> tuple[Path, Path, Path]:
     require_plot_dependencies()
 
@@ -330,8 +288,6 @@ def render_response(
         input_path=input_path,
         plot_points=plot_points,
         module_mode_pairs=module_mode_pairs,
-        interpolate=interpolate,
-        points_per_decade=interp_points_per_decade,
     )
 
     return processed_path, png_path, svg_path
@@ -345,8 +301,6 @@ def main(argv: list[str] | None = None) -> int:
             input_csv=args.input,
             out_dir=args.out_dir,
             name=args.name,
-            interpolate=args.interpolate,
-            interp_points_per_decade=args.interp_points_per_decade,
         )
     except RuntimeError as exc:
         message = str(exc)
