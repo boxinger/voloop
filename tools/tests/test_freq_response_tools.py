@@ -178,6 +178,27 @@ def test_parse_args_rejects_out_with_replace() -> None:
         )
 
 
+def test_parse_args_accepts_json_target() -> None:
+    args = generate_frequencies.parse_args(
+        [
+            "--json",
+            "config.json",
+            "--start-hz",
+            "1",
+            "--stop-hz",
+            "10",
+            "--points-per-decade",
+            "1",
+        ]
+    )
+
+    assert args.json_file == Path("config.json")
+    assert args.out is None
+
+    runner_args = run_c_runner.parse_args(["--json", "config.json", "--dry-run"])
+    assert runner_args.json_file == Path("config.json")
+
+
 def test_parse_args_requires_config_or_out() -> None:
     with pytest.raises(SystemExit):
         generate_frequencies.parse_args(

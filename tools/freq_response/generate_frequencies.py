@@ -221,7 +221,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Generate VOLOOP log-sweep frequency response frequency lists.",
     )
     target_group = parser.add_mutually_exclusive_group(required=True)
-    target_group.add_argument("--config", type=Path, help="Config JSON to update at frequencies.values_hz.")
+    target_group.add_argument(
+        "--json",
+        dest="json_file",
+        type=Path,
+        help="Config JSON to update at frequencies.values_hz.",
+    )
     target_group.add_argument("--out", type=Path, help="Standalone frequencies.txt output path.")
     parser.add_argument("--start-hz", required=True, type=float, help="Sweep start frequency in Hz.")
     parser.add_argument("--stop-hz", required=True, type=float, help="Sweep stop frequency in Hz.")
@@ -240,8 +245,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--replace", action="store_true", help="Replace config frequencies instead of merging.")
     parser.add_argument("--dry-run", action="store_true", help="Preview the result without writing files.")
     args = parser.parse_args(argv)
-    if args.replace and args.config is None:
-        parser.error("--replace can only be used with --config")
+    if args.replace and args.json_file is None:
+        parser.error("--replace can only be used with --json")
     return args
 
 
@@ -254,10 +259,10 @@ def main(argv: list[str] | None = None) -> int:
             points_per_decade=args.points_per_decade,
             include_hz=args.include_hz,
         )
-        if args.config is not None:
+        if args.json_file is not None:
             mode = FrequencyUpdateMode.REPLACE if args.replace else FrequencyUpdateMode.MERGE
             result = update_config_frequencies(
-                config_file=args.config,
+                config_file=args.json_file,
                 generated_values_hz=generated,
                 mode=mode,
                 dry_run=args.dry_run,

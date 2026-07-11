@@ -297,7 +297,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run the VOLOOP C frequency response runner from a JSON config.",
     )
-    parser.add_argument("--config", required=True, type=Path, help="Runner config JSON path.")
+    parser.add_argument(
+        "--json",
+        dest="json_file",
+        required=True,
+        type=Path,
+        help="Runner config JSON path.",
+    )
     parser.add_argument(
         "--runner",
         type=Path,
@@ -337,7 +343,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         result = run_from_config(
-            config_file=args.config,
+            config_file=args.json_file,
             runner_override=args.runner,
             output_override=args.output,
             dry_run=args.dry_run,
