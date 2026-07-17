@@ -47,3 +47,21 @@ voloop_add_c_test(voloop_pid_property
         property
         pid
 )
+
+voloop_add_c_test(voloop_pfc_guard
+    SOURCES
+        pfc/test_pfc_guard.c
+    LABELS
+        L1
+        guard
+        pfc
+)
+
+voloop_add_c_test(voloop_pfc_property
+    SOURCES
+        pfc/test_pfc_property.c
+    LABELS
+        L2
+        property
+        pfc
+)

@@ -24,7 +24,7 @@
  * @endcode
  *
  * Core APIs are organized into functional modules such as common definitions,
- * PID, first-order filters, QPR, NCO, PLL, and off-grid inverter control.
+ * PID, first-order filters, QPR, NCO, PLL, PFC, and off-grid inverter control.
  */
 
 #include "voloop_def.h"
@@ -34,6 +34,7 @@
 #include "voloop_nco.h"
 #include "voloop_offinv.h"
 #include "voloop_fof.h"
+#include "voloop_pfc.h"
 #include "voloop_qpr.h"
 
 #endif /* VOLOOP_H */

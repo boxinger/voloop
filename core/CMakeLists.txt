@@ -9,6 +9,7 @@ target_sources(voloop
         Src/voloop_fof.c
         Src/voloop_nco.c
         Src/voloop_offinv.c
+        Src/voloop_pfc.c
         Src/voloop_pid.c
         Src/voloop_pll.c
         Src/voloop_qpr.c
