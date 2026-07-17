@@ -135,6 +135,32 @@ static void test_exploding(VFR_TestContext* ctx) {
     expect_status(ctx, name, VFR_POINT_OUTPUT_LIMIT_EXCEEDED, status);
 }
 
+static void test_measure_sample_limit(VFR_TestContext* ctx) {
+    const char* name = "measure_sample_limit";
+    VFR_PointMeasureConfig config = make_default_config();
+    VFR_TestSubject subject = {NULL, unity_compute, NULL};
+    VFR_PointMeasureResult result = {0};
+    VFR_PointMeasureStatus status;
+
+    config.max_samples_per_point = 1599U;
+    status = VFR_MeasurePoint(&subject, &config, &result);
+
+    expect_status(ctx, name, VFR_POINT_SAMPLE_LIMIT_EXCEEDED, status);
+}
+
+static void test_warmup_does_not_count_against_sample_limit(VFR_TestContext* ctx) {
+    const char* name = "warmup_does_not_count_against_sample_limit";
+    VFR_PointMeasureConfig config = make_default_config();
+    VFR_TestSubject subject = {NULL, unity_compute, NULL};
+    VFR_PointMeasureResult result = {0};
+    VFR_PointMeasureStatus status;
+
+    config.max_samples_per_point = 1600U;
+    status = VFR_MeasurePoint(&subject, &config, &result);
+
+    expect_status(ctx, name, VFR_POINT_OK, status);
+}
+
 int main(void) {
     VFR_TestContext ctx = {0U};
 
@@ -143,6 +169,8 @@ int main(void) {
     test_negative_unity(&ctx);
     test_zero(&ctx);
     test_exploding(&ctx);
+    test_measure_sample_limit(&ctx);
+    test_warmup_does_not_count_against_sample_limit(&ctx);
 
     if (ctx.failures != 0U) {
         printf("[FAIL] vfr_point_measure_test: %u failure(s)\n", ctx.failures);

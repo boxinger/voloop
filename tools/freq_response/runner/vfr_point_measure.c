@@ -110,8 +110,10 @@ VFR_PointMeasureStatus VFR_MeasurePoint(VFR_TestSubject* subject,
 
     /*
      * Test-point sampling-period approximation:
-     * use round(fs / f) so warmup and measurement cover approximately integer
-     * input cycles for the requested frequency point. Stage-one/two tests
+     * use round(fs / f) so warmup and measurement each cover approximately
+     * integer input cycles for the requested frequency point. Warmup samples
+     * settle the subject but are not accumulated into the frequency response
+     * and do not count against max_samples_per_point. Stage-one/two tests
      * should prefer frequencies that divide the sample rate closely. Future
      * logarithmic sweeps should evaluate leakage using:
      * actual_cycles_measured = measure_samples * frequency_hz / sample_rate_hz.
@@ -137,7 +139,7 @@ VFR_PointMeasureStatus VFR_MeasurePoint(VFR_TestSubject* subject,
     result->measure_samples = measure_samples;
     result->total_samples = total_samples;
 
-    if (total_samples > config->max_samples_per_point) {
+    if (measure_samples > config->max_samples_per_point) {
         return vfr_finish(result, VFR_POINT_SAMPLE_LIMIT_EXCEEDED);
     }
 
