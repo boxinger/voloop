@@ -65,11 +65,15 @@ typedef struct {
  * @brief Final result of one frequency-response measurement point.
  */
 typedef struct {
-    float frequency_hz;         /**< Measured frequency, copied from the configuration. */
-    float modulation_amplitude; /**< Peak modulation perturbation used as the input. */
-    float voltage_amplitude;    /**< Measured fundamental voltage peak amplitude. */
-    float gain_linear;          /**< Voltage amplitude divided by modulation amplitude. */
-    float gain_db;              /**< Linear gain converted using 20 * log10(gain_linear). */
+    float frequency_hz;            /**< Measured frequency, copied from the configuration. */
+    float modulation_amplitude;    /**< Peak modulation perturbation used as the input. */
+    float synchronous_accumulator; /**< Raw sum of voltage times the sine reference. */
+    float quadrature_accumulator;  /**< Raw sum of voltage times the cosine reference. */
+    float synchronous_component;   /**< Synchronous accumulator normalized by 2 / N. */
+    float quadrature_component;    /**< Quadrature accumulator normalized by 2 / N. */
+    float voltage_amplitude;       /**< Measured fundamental voltage peak amplitude. */
+    float gain_linear;             /**< Voltage amplitude divided by modulation amplitude. */
+    float gain_db;                 /**< Linear gain converted using 20 * log10(gain_linear). */
     float phase_deg;          /**< Voltage phase minus modulation phase, wrapped to [-180, 180). */
     uint32_t warmup_samples;  /**< Number of discarded settling samples. */
     uint32_t measure_samples; /**< Number of samples used for synchronous detection. */

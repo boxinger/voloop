@@ -238,7 +238,7 @@ VFR_SinglePointStatus VFR_SinglePointGetStatus(const VFR_SinglePointHandle* hand
 
 VFR_SinglePointStatus VFR_SinglePointGetResult(const VFR_SinglePointHandle* handle,
                                                VFR_SinglePointResult* result) {
-    float accumulator_magnitude;
+    float normalization;
 
     if (result != NULL) {
         *result = (VFR_SinglePointResult){ 0 };
@@ -259,14 +259,22 @@ VFR_SinglePointStatus VFR_SinglePointGetResult(const VFR_SinglePointHandle* hand
         return result->status;
     }
 
-    accumulator_magnitude = sqrtf((handle->sine_accumulator * handle->sine_accumulator) +
-                                  (handle->cosine_accumulator * handle->cosine_accumulator));
-    result->voltage_amplitude = (2.0f / (float)handle->measure_samples) * accumulator_magnitude;
+    normalization = 2.0f / (float)handle->measure_samples;
+    result->synchronous_accumulator = handle->sine_accumulator;
+    result->quadrature_accumulator = handle->cosine_accumulator;
+    result->synchronous_component = normalization * result->synchronous_accumulator;
+    result->quadrature_component = normalization * result->quadrature_accumulator;
+    result->voltage_amplitude =
+        sqrtf((result->synchronous_component * result->synchronous_component) +
+              (result->quadrature_component * result->quadrature_component));
     result->gain_linear = result->voltage_amplitude / handle->config.modulation_amplitude;
     result->phase_deg = VFR_SinglePointWrapPhaseDeg(
-        atan2f(handle->cosine_accumulator, handle->sine_accumulator) * VFR_SINGLE_POINT_RAD_TO_DEG);
+        atan2f(result->quadrature_component, result->synchronous_component) *
+        VFR_SINGLE_POINT_RAD_TO_DEG);
 
-    if (!isfinite(result->voltage_amplitude) || !isfinite(result->gain_linear) ||
+    if (!isfinite(result->synchronous_accumulator) || !isfinite(result->quadrature_accumulator) ||
+        !isfinite(result->synchronous_component) || !isfinite(result->quadrature_component) ||
+        !isfinite(result->voltage_amplitude) || !isfinite(result->gain_linear) ||
         !isfinite(result->phase_deg)) {
         result->status = VFR_SINGLE_POINT_NUMERIC_ERROR;
         return result->status;
