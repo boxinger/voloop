@@ -21,25 +21,26 @@ static VFR_SinglePointStatus VFR_SinglePointSetInitError(VFR_SinglePointHandle* 
     return status;
 }
 
+static void VFR_SinglePointDisableOutput(VFR_SinglePointOutput* output) {
+    if (output != NULL) {
+        output->pwm_state = VOLOOP_PWM_DISABLED;
+        output->modulation = 0.0f;
+    }
+}
+
 static VFR_SinglePointState VFR_SinglePointSetRuntimeError(VFR_SinglePointHandle* handle,
                                                            VFR_SinglePointStatus status,
-                                                           float* suggested_modulation) {
+                                                           VFR_SinglePointOutput* output) {
     handle->state = VFR_SINGLE_POINT_ERROR;
     handle->status = status;
-
-    if (suggested_modulation != NULL) {
-        if (isfinite(handle->config.modulation_bias)) {
-            *suggested_modulation = handle->config.modulation_bias;
-        } else {
-            *suggested_modulation = 0.0f;
-        }
-    }
+    handle->last_suggested_modulation = 0.0f;
+    VFR_SinglePointDisableOutput(output);
 
     return VFR_SINGLE_POINT_ERROR;
 }
 
 static VFR_SinglePointState VFR_SinglePointEmitModulation(VFR_SinglePointHandle* handle,
-                                                          float* suggested_modulation) {
+                                                          VFR_SinglePointOutput* output) {
     int32_t phase_q31 = (int32_t)handle->phase_accumulator;
     float reference_sine = VOLOOP_DEF_SINQ31(phase_q31);
     float reference_cosine = VOLOOP_DEF_COSQ31(phase_q31);
@@ -47,15 +48,15 @@ static VFR_SinglePointState VFR_SinglePointEmitModulation(VFR_SinglePointHandle*
         handle->config.modulation_bias + (handle->config.modulation_amplitude * reference_sine);
 
     if (!isfinite(reference_sine) || !isfinite(reference_cosine) || !isfinite(modulation)) {
-        return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_NUMERIC_ERROR,
-                                              suggested_modulation);
+        return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_NUMERIC_ERROR, output);
     }
 
     handle->reference_sine = reference_sine;
     handle->reference_cosine = reference_cosine;
     handle->last_suggested_modulation = modulation;
     handle->phase_accumulator += handle->phase_step;
-    *suggested_modulation = modulation;
+    output->pwm_state = VOLOOP_PWM_ENABLE;
+    output->modulation = modulation;
 
     return handle->state;
 }
@@ -144,29 +145,23 @@ VFR_SinglePointStatus VFR_SinglePointInit(VFR_SinglePointHandle* handle,
 }
 
 VFR_SinglePointState VFR_SinglePointTick(VFR_SinglePointHandle* handle, float actual_voltage,
-                                         float* suggested_modulation) {
+                                         VFR_SinglePointOutput* output) {
     if (handle == NULL) {
-        if (suggested_modulation != NULL) {
-            *suggested_modulation = 0.0f;
-        }
+        VFR_SinglePointDisableOutput(output);
         return VFR_SINGLE_POINT_ERROR;
     }
 
-    if (suggested_modulation == NULL) {
+    if (output == NULL) {
         return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_INVALID_ARGUMENT, NULL);
     }
 
     if (handle->state == VFR_SINGLE_POINT_COMPLETE) {
-        *suggested_modulation = handle->config.modulation_bias;
+        VFR_SinglePointDisableOutput(output);
         return handle->state;
     }
 
     if (handle->state == VFR_SINGLE_POINT_ERROR) {
-        if (isfinite(handle->config.modulation_bias)) {
-            *suggested_modulation = handle->config.modulation_bias;
-        } else {
-            *suggested_modulation = 0.0f;
-        }
+        VFR_SinglePointDisableOutput(output);
         return handle->state;
     }
 
@@ -176,21 +171,19 @@ VFR_SinglePointState VFR_SinglePointTick(VFR_SinglePointHandle* handle, float ac
         } else {
             handle->state = VFR_SINGLE_POINT_MEASURING;
         }
-        return VFR_SinglePointEmitModulation(handle, suggested_modulation);
+        return VFR_SinglePointEmitModulation(handle, output);
     }
 
     if (handle->state != VFR_SINGLE_POINT_WARMUP && handle->state != VFR_SINGLE_POINT_MEASURING) {
-        return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_INVALID_STATE,
-                                              suggested_modulation);
+        return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_INVALID_STATE, output);
     }
 
     if (!isfinite(actual_voltage)) {
-        return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_NUMERIC_ERROR,
-                                              suggested_modulation);
+        return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_NUMERIC_ERROR, output);
     }
     if (fabsf(actual_voltage) > handle->config.voltage_abs_limit) {
         return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_VOLTAGE_LIMIT_EXCEEDED,
-                                              suggested_modulation);
+                                              output);
     }
 
     if (handle->state == VFR_SINGLE_POINT_WARMUP) {
@@ -204,20 +197,19 @@ VFR_SinglePointState VFR_SinglePointTick(VFR_SinglePointHandle* handle, float ac
         ++handle->measure_index;
 
         if (!isfinite(handle->sine_accumulator) || !isfinite(handle->cosine_accumulator)) {
-            return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_NUMERIC_ERROR,
-                                                  suggested_modulation);
+            return VFR_SinglePointSetRuntimeError(handle, VFR_SINGLE_POINT_NUMERIC_ERROR, output);
         }
 
         if (handle->measure_index >= handle->measure_samples) {
             handle->state = VFR_SINGLE_POINT_COMPLETE;
             handle->status = VFR_SINGLE_POINT_OK;
-            handle->last_suggested_modulation = handle->config.modulation_bias;
-            *suggested_modulation = handle->config.modulation_bias;
+            handle->last_suggested_modulation = 0.0f;
+            VFR_SinglePointDisableOutput(output);
             return handle->state;
         }
     }
 
-    return VFR_SinglePointEmitModulation(handle, suggested_modulation);
+    return VFR_SinglePointEmitModulation(handle, output);
 }
 
 VFR_SinglePointState VFR_SinglePointGetState(const VFR_SinglePointHandle* handle) {

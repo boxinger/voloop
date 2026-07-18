@@ -6,6 +6,8 @@
  * @brief Interrupt-driven single-frequency response measurement API.
  */
 
+#include "voloop_def.h"
+
 #include <stdint.h>
 
 /**
@@ -82,6 +84,14 @@ typedef struct {
 } VFR_SinglePointResult;
 
 /**
+ * @brief Power-stage output recommendation for one interrupt interval.
+ */
+typedef struct {
+    VOLOOP_DEF_PwmStateTypeDef pwm_state; /**< Recommended PWM enable state. */
+    float modulation;                     /**< Recommended modulation value when enabled. */
+} VFR_SinglePointOutput;
+
+/**
  * @brief Caller-owned configuration and runtime state.
  *
  * The handle uses only fixed-size storage and can be statically allocated. Its
@@ -126,20 +136,21 @@ VFR_SinglePointStatus VFR_SinglePointInit(VFR_SinglePointHandle* handle,
  * @brief Advance the measurement by one interrupt sample.
  *
  * On the first call after initialization, @p actual_voltage is ignored and the
- * first modulation suggestion is returned. On every later call,
- * @p actual_voltage must be the sample obtained while the modulation value
- * returned by the preceding call was applied. The function then consumes that
- * voltage and returns the modulation value for the next sampling interval.
+ * first enabled modulation suggestion is returned through @p output. On every
+ * later call, @p actual_voltage must be the sample obtained while the
+ * modulation value returned by the preceding call was applied. The function
+ * then consumes that voltage and produces the recommendation for the next
+ * sampling interval.
  *
  * Each call performs bounded, constant-storage work and contains no waiting
  * loop. When the last measurement sample is consumed, the function returns
- * VFR_SINGLE_POINT_COMPLETE and writes
- * @ref VFR_SinglePointConfig::modulation_bias to @p suggested_modulation so
- * that the perturbation is removed.
+ * VFR_SINGLE_POINT_COMPLETE and recommends VOLOOP_PWM_DISABLED with zero
+ * modulation. Every error path produces the same disabled-output
+ * recommendation when @p output is available.
  *
  * @param handle Initialized measurement handle.
  * @param actual_voltage Latest measured power-path voltage sample.
- * @param suggested_modulation Receives the modulation suggestion for the next interval.
+ * @param output Receives the PWM state and modulation recommendation for the next interval.
  * @return The state after this update. VFR_SINGLE_POINT_ERROR is returned for
  *         an invalid argument, invalid call state, non-finite sample, or
  *         voltage-limit violation.
@@ -148,7 +159,7 @@ VFR_SinglePointStatus VFR_SinglePointInit(VFR_SinglePointHandle* handle,
  *       @ref VFR_SinglePointConfig::sample_rate_hz.
  */
 VFR_SinglePointState VFR_SinglePointTick(VFR_SinglePointHandle* handle, float actual_voltage,
-                                         float* suggested_modulation);
+                                         VFR_SinglePointOutput* output);
 
 /**
  * @brief Read the current measurement state.
