@@ -5,6 +5,7 @@ add_library(voloop::extensions ALIAS voloop_extensions)
 target_sources(voloop_extensions
     PRIVATE
         vfr_single_point.c
+        vfr_multi_point.c
 )
 
 target_include_directories(voloop_extensions
