@@ -28,21 +28,22 @@ except ImportError:
     plt = None
 
 
-REQUIRED_FIELDS = [
+CONTEXT_FIELDS = [
     "module",
     "mode",
-    "sample_rate_hz",
+]
+
+PLOT_FIELDS = [
     "frequency_hz",
-    "input_amplitude",
-    "output_amplitude",
-    "gain_linear",
     "gain_db",
     "phase_deg",
-    "warmup_samples",
-    "measure_samples",
-    "total_samples",
+]
+
+VALIDITY_FIELDS = [
     "status",
 ]
+
+REQUIRED_FIELDS = CONTEXT_FIELDS + PLOT_FIELDS + VALIDITY_FIELDS
 
 VALID_STATUSES = {"ok", "ok_with_gain_floor"}
 MISSING_DEPENDENCY_MESSAGE = (

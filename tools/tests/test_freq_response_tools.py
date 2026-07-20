@@ -351,8 +351,8 @@ def test_plot_response_render_response_generates_outputs(tmp_path: Path) -> None
         "\n".join(
             [
                 ",".join(plot_response.REQUIRED_FIELDS),
-                "pid,one_zero,10000,10,1.0,1.0,1.0,0.0,0.0,2000,1000,3000,ok",
-                "pid,one_zero,10000,20,1.0,2.0,2.0,6.02059991328,-45.0,1000,1000,2000,ok",
+                "pid,one_zero,10,0.0,0.0,ok",
+                "pid,one_zero,20,6.02059991328,-45.0,ok",
                 "",
             ]
         ),
@@ -371,6 +371,38 @@ def test_plot_response_render_response_generates_outputs(tmp_path: Path) -> None
     processed_csv = processed_path.read_text(encoding="utf-8")
     assert "phase_unwrapped_deg" in processed_csv
     assert "plot_valid" in processed_csv
+
+
+def test_plot_response_accepts_reordered_required_columns(tmp_path: Path) -> None:
+    raw_csv = tmp_path / "reordered.csv"
+    raw_csv.write_text(
+        "\n".join(
+            [
+                "status,phase_deg,module,gain_db,mode,frequency_hz",
+                "ok,-45.0,pid,6.02059991328,one_zero,20",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    _fieldnames, _rows, valid_points, module_mode_pairs = plot_response.read_raw_csv(raw_csv)
+
+    assert len(valid_points) == 1
+    assert valid_points[0].frequency_hz == 20.0
+    assert valid_points[0].gain_db == pytest.approx(6.02059991328)
+    assert valid_points[0].phase_deg == -45.0
+    assert module_mode_pairs == {("pid", "one_zero")}
+
+
+@pytest.mark.parametrize("missing_field", plot_response.REQUIRED_FIELDS)
+def test_plot_response_rejects_each_missing_required_column(tmp_path: Path, missing_field: str) -> None:
+    raw_csv = tmp_path / f"missing_{missing_field}.csv"
+    fieldnames = [field for field in plot_response.REQUIRED_FIELDS if field != missing_field]
+    raw_csv.write_text(",".join(fieldnames) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=missing_field):
+        plot_response.read_raw_csv(raw_csv)
 
 
 def test_modules_import_without_side_effects() -> None:
