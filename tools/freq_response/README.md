@@ -20,7 +20,21 @@ raw CSV
             ↓
 plot_response.py
     生成 processed CSV、PNG 和 SVG
-````
+```
+
+单片机扫频输出使用一条额外的转换路径：
+
+```text
+MCU CSV（同步分量、正交分量、数字状态码）
+            ↓
+convert_mcu_response.py
+    补充 module、mode、gain_linear、gain_db 和 phase_deg
+            ↓
+response CSV
+            ↓
+plot_response.py
+    生成 processed CSV、PNG 和 SVG
+```
 
 `config.json` 是一次测试的源规格。`frequencies.txt`、CSV 和图片均为可重新生成的产物。
 
@@ -108,7 +122,49 @@ uv run python run_c_runner.py \
   --dry-run
 ```
 
-### 3. 生成 Bode 图
+### 3. 转换单片机扫频 CSV
+
+单片机输出的 CSV 需要包含以下列：
+
+```text
+frequency_hz,synchronous_component,quadrature_component,status
+```
+
+例如，将 `cache/1.csv` 转换为可供绘图工具读取的响应 CSV：
+
+```bash
+uv run python convert_mcu_response.py \
+  --input ../../../cache/1.csv
+```
+
+默认不会覆盖输入文件，而是在输入文件旁生成 `1_response.csv`。输出列为：
+
+```text
+module,mode,frequency_hz,synchronous_component,quadrature_component,gain_linear,gain_db,phase_deg,status
+```
+
+其中 `module` 固定为 `power_path`，`mode` 使用输入文件名且不含扩展名。计算规则与当前单片机固件一致：
+
+```text
+amplitude   = hypot(synchronous_component, quadrature_component)
+gain_linear = max(amplitude / input_amplitude, gain_floor)
+gain_db     = 20 * log10(gain_linear)
+phase_deg   = degrees(atan2(quadrature_component, synchronous_component))
+```
+
+默认 `input_amplitude=0.1`、`gain_floor=1e-12`；扫描配置不同时可覆盖：
+
+```bash
+uv run python convert_mcu_response.py \
+  --input ../../../cache/1.csv \
+  --output ../../../cache/power_path_1.csv \
+  --input-amplitude 0.05 \
+  --gain-floor 1e-10
+```
+
+状态码 `0` 和 `1` 分别转换为 `ok` 和 `ok_with_gain_floor`。其他状态行仍会保留，但派生列留空，因此不会进入 Bode 图。
+
+### 4. 生成 Bode 图
 
 ```bash
 uv run python plot_response.py \
@@ -155,9 +211,10 @@ params
 
 ## Python API
 
-三个 Python 文件均可直接执行，也可作为模块导入：
+四个 Python 文件均可直接执行，也可作为模块导入：
 
 ```python
+from convert_mcu_response import convert_mcu_response
 from generate_frequencies import generate_log_frequencies
 from run_c_runner import run_from_config
 from plot_response import render_response
@@ -169,6 +226,7 @@ from plot_response import render_response
 
 * C runner 只接受频点文本文件，JSON 到文本文件的转换由 Python 完成。
 * 工具只测量已实现的公共接口行为，不推导连续域理论模型。
+* 单片机原始 CSV 不会被转换器覆盖；无效测量行会保留以便追溯。
 * 无效状态行保留在原始和处理后 CSV 中，但不进入 Bode 图。
 * 频点必须为有限正数，并低于当前测量配置允许的有效范围。
 * 工具不修改 `core`，也不负责自动设计控制器参数。
