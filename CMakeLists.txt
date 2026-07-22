@@ -7,6 +7,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(voloop_options)
 
 add_subdirectory(core)
+add_subdirectory(extensions)
 
 if(VOLOOP_BUILD_TESTS)
     include(CTest)

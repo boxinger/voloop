@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import math
 import inspect
@@ -11,6 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
+from freq_response import convert_mcu_response
 from freq_response import generate_frequencies
 from freq_response import plot_response
 from freq_response import run_c_runner
@@ -351,8 +353,8 @@ def test_plot_response_render_response_generates_outputs(tmp_path: Path) -> None
         "\n".join(
             [
                 ",".join(plot_response.REQUIRED_FIELDS),
-                "pid,one_zero,10000,10,1.0,1.0,1.0,0.0,0.0,2000,1000,3000,ok",
-                "pid,one_zero,10000,20,1.0,2.0,2.0,6.02059991328,-45.0,1000,1000,2000,ok",
+                "pid,one_zero,10,0.0,0.0,ok",
+                "pid,one_zero,20,6.02059991328,-45.0,ok",
                 "",
             ]
         ),
@@ -373,7 +375,231 @@ def test_plot_response_render_response_generates_outputs(tmp_path: Path) -> None
     assert "plot_valid" in processed_csv
 
 
+def test_plot_response_accepts_reordered_required_columns(tmp_path: Path) -> None:
+    raw_csv = tmp_path / "reordered.csv"
+    raw_csv.write_text(
+        "\n".join(
+            [
+                "status,phase_deg,module,gain_db,mode,frequency_hz",
+                "ok,-45.0,pid,6.02059991328,one_zero,20",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    _fieldnames, _rows, valid_points, module_mode_pairs = plot_response.read_raw_csv(raw_csv)
+
+    assert len(valid_points) == 1
+    assert valid_points[0].frequency_hz == 20.0
+    assert valid_points[0].gain_db == pytest.approx(6.02059991328)
+    assert valid_points[0].phase_deg == -45.0
+    assert module_mode_pairs == {("pid", "one_zero")}
+
+
+@pytest.mark.parametrize("missing_field", plot_response.REQUIRED_FIELDS)
+def test_plot_response_rejects_each_missing_required_column(tmp_path: Path, missing_field: str) -> None:
+    raw_csv = tmp_path / f"missing_{missing_field}.csv"
+    fieldnames = [field for field in plot_response.REQUIRED_FIELDS if field != missing_field]
+    raw_csv.write_text(",".join(fieldnames) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=missing_field):
+        plot_response.read_raw_csv(raw_csv)
+
+
+def test_convert_mcu_response_default_output_and_values(tmp_path: Path) -> None:
+    input_csv = tmp_path / "1.csv"
+    input_csv.write_text(
+        "\n".join(
+            [
+                ",".join(convert_mcu_response.REQUIRED_INPUT_FIELDS),
+                "10,0.2,0,0",
+                "20,0.1,-0.1,0",
+                "30,-0.1,0,0",
+                "",
+            ]
+        ),
+        encoding="utf-8-sig",
+    )
+
+    output_csv = convert_mcu_response.convert_mcu_response(input_csv)
+
+    assert output_csv == tmp_path / "1_response.csv"
+    with output_csv.open("r", newline="", encoding="utf-8") as csv_file:
+        reader = csv.DictReader(csv_file)
+        rows = list(reader)
+        assert reader.fieldnames == convert_mcu_response.OUTPUT_FIELDS
+
+    assert [row["module"] for row in rows] == ["power_path"] * 3
+    assert [row["mode"] for row in rows] == ["1"] * 3
+    assert [row["status"] for row in rows] == ["ok"] * 3
+    assert float(rows[0]["gain_linear"]) == pytest.approx(2.0)
+    assert float(rows[0]["gain_db"]) == pytest.approx(6.02059991328)
+    assert float(rows[0]["phase_deg"]) == 0.0
+    assert float(rows[1]["gain_linear"]) == pytest.approx(math.sqrt(2.0))
+    assert float(rows[1]["gain_db"]) == pytest.approx(3.01029995664)
+    assert float(rows[1]["phase_deg"]) == -45.0
+    assert float(rows[2]["gain_linear"]) == pytest.approx(1.0)
+    assert float(rows[2]["gain_db"]) == 0.0
+    assert float(rows[2]["phase_deg"]) == -180.0
+
+
+def test_convert_mcu_response_preserves_invalid_rows_and_applies_floor(tmp_path: Path) -> None:
+    input_csv = tmp_path / "scan.csv"
+    input_csv.write_text(
+        "\n".join(
+            [
+                ",".join(convert_mcu_response.REQUIRED_INPUT_FIELDS),
+                "10,0,0,1",
+                "20,0.2,0,2",
+                "30,0.2,0,99",
+                "40,nan,0,0",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    output_csv = convert_mcu_response.convert_mcu_response(
+        input_csv,
+        input_amplitude=0.2,
+        gain_floor=1.0e-6,
+    )
+    with output_csv.open("r", newline="", encoding="utf-8") as csv_file:
+        rows = list(csv.DictReader(csv_file))
+
+    assert rows[0]["status"] == "ok_with_gain_floor"
+    assert float(rows[0]["gain_linear"]) == pytest.approx(1.0e-6)
+    assert float(rows[0]["gain_db"]) == pytest.approx(-120.0)
+    assert float(rows[0]["phase_deg"]) == 0.0
+    assert rows[1]["status"] == "invalid_argument"
+    assert rows[1]["gain_linear"] == rows[1]["gain_db"] == rows[1]["phase_deg"] == ""
+    assert rows[2]["status"] == "unknown_99"
+    assert rows[2]["gain_linear"] == rows[2]["gain_db"] == rows[2]["phase_deg"] == ""
+    assert rows[3]["status"] == "ok"
+    assert rows[3]["gain_linear"] == rows[3]["gain_db"] == rows[3]["phase_deg"] == ""
+
+
+def test_convert_mcu_response_status_names_match_firmware() -> None:
+    assert convert_mcu_response.STATUS_NAMES == {
+        0: "ok",
+        1: "ok_with_gain_floor",
+        2: "invalid_argument",
+        3: "invalid_frequency",
+        4: "insufficient_samples",
+        5: "sample_limit_exceeded",
+        6: "voltage_limit_exceeded",
+        7: "numeric_error",
+        8: "invalid_state",
+    }
+
+
+@pytest.mark.parametrize("missing_field", convert_mcu_response.REQUIRED_INPUT_FIELDS)
+def test_convert_mcu_response_rejects_missing_fields(
+    tmp_path: Path,
+    missing_field: str,
+) -> None:
+    input_csv = tmp_path / "missing.csv"
+    fieldnames = [
+        field for field in convert_mcu_response.REQUIRED_INPUT_FIELDS if field != missing_field
+    ]
+    input_csv.write_text(",".join(fieldnames) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=missing_field):
+        convert_mcu_response.convert_mcu_response(input_csv)
+
+
+@pytest.mark.parametrize(
+    ("parameter", "value"),
+    [
+        ("input_amplitude", 0.0),
+        ("input_amplitude", math.inf),
+        ("gain_floor", -1.0),
+        ("gain_floor", math.nan),
+    ],
+)
+def test_convert_mcu_response_rejects_invalid_parameters(
+    tmp_path: Path,
+    parameter: str,
+    value: float,
+) -> None:
+    input_csv = tmp_path / "scan.csv"
+    input_csv.write_text(",".join(convert_mcu_response.REQUIRED_INPUT_FIELDS) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=parameter):
+        convert_mcu_response.convert_mcu_response(input_csv, **{parameter: value})
+
+
+@pytest.mark.parametrize(
+    ("contents", "message"),
+    [
+        ("", "no header"),
+        (",".join(convert_mcu_response.REQUIRED_INPUT_FIELDS) + "\n", "no data rows"),
+    ],
+)
+def test_convert_mcu_response_rejects_empty_input(
+    tmp_path: Path,
+    contents: str,
+    message: str,
+) -> None:
+    input_csv = tmp_path / "empty.csv"
+    input_csv.write_text(contents, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        convert_mcu_response.convert_mcu_response(input_csv)
+
+
+def test_convert_mcu_response_refuses_to_overwrite_input(tmp_path: Path) -> None:
+    input_csv = tmp_path / "scan.csv"
+    input_csv.write_text(",".join(convert_mcu_response.REQUIRED_INPUT_FIELDS) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="overwrite input"):
+        convert_mcu_response.convert_mcu_response(input_csv, output_csv=input_csv)
+
+
+def test_convert_mcu_response_output_is_plot_response_compatible(tmp_path: Path) -> None:
+    input_csv = tmp_path / "power_scan.csv"
+    input_csv.write_text(
+        ",".join(convert_mcu_response.REQUIRED_INPUT_FIELDS) + "\n10,0.2,0,0\n",
+        encoding="utf-8",
+    )
+    output_csv = convert_mcu_response.convert_mcu_response(input_csv)
+
+    _fieldnames, _rows, valid_points, module_mode_pairs = plot_response.read_raw_csv(output_csv)
+
+    assert len(valid_points) == 1
+    assert valid_points[0].gain_db == pytest.approx(6.02059991328)
+    assert module_mode_pairs == {("power_path", "power_scan")}
+
+
+def test_convert_mcu_response_cli_writes_explicit_output(tmp_path: Path, capsys) -> None:
+    input_csv = tmp_path / "scan.csv"
+    output_csv = tmp_path / "output" / "converted.csv"
+    input_csv.write_text(
+        ",".join(convert_mcu_response.REQUIRED_INPUT_FIELDS) + "\n10,0.2,0,0\n",
+        encoding="utf-8",
+    )
+
+    return_code = convert_mcu_response.main(
+        [
+            "--input",
+            str(input_csv),
+            "--output",
+            str(output_csv),
+            "--input-amplitude",
+            "0.2",
+            "--gain-floor",
+            "1e-9",
+        ]
+    )
+
+    assert return_code == 0
+    assert output_csv.exists()
+    assert f"response CSV: {output_csv}" in capsys.readouterr().out
+
+
 def test_modules_import_without_side_effects() -> None:
+    assert convert_mcu_response.main is not None
     assert generate_frequencies.main is not None
     assert plot_response.main is not None
     assert run_c_runner.main is not None
