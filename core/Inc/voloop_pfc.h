@@ -121,12 +121,12 @@ typedef struct {
 /**
  * @brief DC bus over-voltage protection threshold.
  */
-#define PFC_BUS_OVTHRESHOLD 430.0f
+#define PFC_BUS_OVTHRESHOLD 50.0f
 
 /**
  * @brief Input/grid over-current protection threshold.
  */
-#define PFC_INPUT_OCTHRESHOLD 30.0f
+#define PFC_INPUT_OCTHRESHOLD 5.0f
 
 /**
  * @brief Maximum generated PWM duty.
