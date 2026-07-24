@@ -96,7 +96,9 @@ typedef enum {
  * Every field is required. ::VOLOOP_PFC_Init rejects non-finite or
  * inconsistent limits. The duty limits apply only to the bridge leg currently
  * switching at high frequency; the line-frequency leg is allowed to use an
- * upper-switch duty of 0.0f.
+ * upper-switch duty of 0.0f. If a calculated high-frequency duty falls outside
+ * the configured interval, both bridge legs are disabled for that update and
+ * the grid-current controller is reset.
  */
 typedef struct {
     float BusOverVoltageThreshold;  /**< Active-state DC-bus over-voltage threshold in volts. */
@@ -320,6 +322,12 @@ PFC_LinePolarityTypeDef VOLOOP_PFC_GetLinePolarity(const PFC_HandleTypeDef* hand
  * When the PLL sine enters the configured zero-crossing deadband, both bridge
  * legs are disabled and the grid-current PI is reset. The PI remains inactive
  * and cleared while the controller remains in the deadband.
+ *
+ * If the calculated high-frequency upper-switch duty is below
+ * ::PFC_ConfigTypeDef::MinHighFrequencyDuty or above
+ * ::PFC_ConfigTypeDef::MaxHighFrequencyDuty, both bridge legs are disabled and
+ * the grid-current PI is reset. This is a normal adjustment rather than a
+ * fault; duty values exactly on either limit remain valid.
  *
  * @param handle PFC handle.
  * @param input Measured grid and DC-bus sample.

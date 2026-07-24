@@ -300,7 +300,7 @@ static void test_sync_advances_pll_and_reports_readiness(VoloopTestContext* ctx)
     PFC_HandleTypeDef pfc = { 0 };
     PID_InitTypeDef pll_pid = make_pid_init(0.1f, 0.0f, 0.0f);
     PID_InitTypeDef bus_pid = make_pid_init(1.0f, 0.01f, 0.0f);
-    PID_InitTypeDef current_pid = make_pid_init(0.5f, 0.02f, 0.0f);
+    PID_InitTypeDef current_pid = make_pid_init(0.01f, 0.0f, 0.0f);
     NCO_InitTypeDef nco = make_nco_init();
     PLL_InitTypeDef pll = make_pll_init(&pll_pid, &nco, TEST_TRIGGER_FREQUENCY);
     PFC_ConfigTypeDef config = make_pfc_config();

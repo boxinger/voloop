@@ -143,9 +143,9 @@ static void test_positive_and_negative_bridge_mapping(VoloopTestContext* ctx) {
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_PFC_Sync(&positive, &input, &output));
     TEST_EXPECT_STATE_EQ(ctx, PFC_LINE_POSITIVE, VOLOOP_PFC_GetLinePolarity(&positive));
     TEST_EXPECT_FLOAT_NEAR(ctx, 10.0f, VOLOOP_PFC_GetCurrentReference(&positive));
-    TEST_EXPECT_FLOAT_NEAR(ctx, 0.1f, VOLOOP_PFC_GetModulation(&positive));
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.8435897f, VOLOOP_PFC_GetModulation(&positive));
     TEST_EXPECT_STATE_EQ(ctx, VOLOOP_PWM_ENABLE, output.LeftLegPwmState);
-    TEST_EXPECT_FLOAT_NEAR(ctx, 0.9f, output.LeftLegDuty);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.1564103f, output.LeftLegDuty);
     TEST_EXPECT_STATE_EQ(ctx, VOLOOP_PWM_ENABLE, output.RightLegPwmState);
     TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, output.RightLegDuty);
 
@@ -154,11 +154,11 @@ static void test_positive_and_negative_bridge_mapping(VoloopTestContext* ctx) {
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_PFC_Sync(&negative, &input, &output));
     TEST_EXPECT_STATE_EQ(ctx, PFC_LINE_NEGATIVE, VOLOOP_PFC_GetLinePolarity(&negative));
     TEST_EXPECT_FLOAT_NEAR(ctx, -10.0f, VOLOOP_PFC_GetCurrentReference(&negative));
-    TEST_EXPECT_FLOAT_NEAR(ctx, -0.1f, VOLOOP_PFC_GetModulation(&negative));
+    TEST_EXPECT_FLOAT_NEAR(ctx, -0.8435897f, VOLOOP_PFC_GetModulation(&negative));
     TEST_EXPECT_STATE_EQ(ctx, VOLOOP_PWM_ENABLE, output.LeftLegPwmState);
     TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, output.LeftLegDuty);
     TEST_EXPECT_STATE_EQ(ctx, VOLOOP_PWM_ENABLE, output.RightLegPwmState);
-    TEST_EXPECT_FLOAT_NEAR(ctx, 0.9f, output.RightLegDuty);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.1564103f, output.RightLegDuty);
 }
 
 static void test_negative_half_cycle_aligns_current_measurement(VoloopTestContext* ctx) {
@@ -173,8 +173,8 @@ static void test_negative_half_cycle_aligns_current_measurement(VoloopTestContex
 
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_PFC_Sync(&pfc, &input, &output));
 
-    TEST_EXPECT_FLOAT_NEAR(ctx, -0.05f, VOLOOP_PFC_GetModulation(&pfc));
-    TEST_EXPECT_FLOAT_NEAR(ctx, 0.95f, output.RightLegDuty);
+    TEST_EXPECT_FLOAT_NEAR(ctx, -0.7935897f, VOLOOP_PFC_GetModulation(&pfc));
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.2064103f, output.RightLegDuty);
 }
 
 static void test_zero_crossing_resets_current_controller(VoloopTestContext* ctx) {
@@ -202,24 +202,84 @@ static void test_zero_crossing_resets_current_controller(VoloopTestContext* ctx)
     expect_output_disabled(ctx, &output);
 }
 
-static void test_high_frequency_duty_uses_configured_limits(VoloopTestContext* ctx) {
-    PFC_HandleTypeDef max_duty = make_started_pfc(1.0f, 0.0f, 0.001f, 0.0f);
-    PFC_HandleTypeDef min_duty = make_started_pfc(1.0f, 0.0f, 1.0f, 0.0f);
+static void test_out_of_range_duty_disables_output_and_resets_current_pi(VoloopTestContext* ctx) {
+    PFC_HandleTypeDef max_duty = make_started_pfc(1.0f, 0.0f, 0.0f, 0.0f);
+    PFC_HandleTypeDef min_duty = make_started_pfc(1.0f, 0.0f, 0.0f, 0.0f);
     PFC_OutputTypeDef output = { 0 };
     PFC_InputTypeDef input = {
-        .GridVoltage = 100.0f,
+        .GridVoltage = 374.4f,
         .GridCurrent = 0.0f,
         .BusVoltage = 390.0f,
     };
 
     force_phase_for_next_sync(&max_duty, VOLOOP_Pi * 0.5f);
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_PFC_Sync(&max_duty, &input, &output));
-    TEST_EXPECT_FLOAT_NEAR(ctx, 0.95f, output.LeftLegDuty);
+    TEST_EXPECT_FAULT_EQ(ctx, PFC_FAULT_NONE, VOLOOP_PFC_GetFaultCode(&max_duty));
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, VOLOOP_PFC_GetModulation(&max_duty));
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, max_duty.GridCurrentPID.Integral);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, max_duty.GridCurrentPID.PreviousError);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UnSaturated, max_duty.GridCurrentPID.State);
+    expect_output_disabled(ctx, &output);
 
+    input.GridVoltage = 15.6f;
     force_phase_for_next_sync(&min_duty, VOLOOP_Pi * 0.5f);
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_PFC_Sync(&min_duty, &input, &output));
-    TEST_EXPECT_FLOAT_NEAR(ctx, 1.0f, VOLOOP_PFC_GetModulation(&min_duty));
+    TEST_EXPECT_FAULT_EQ(ctx, PFC_FAULT_NONE, VOLOOP_PFC_GetFaultCode(&min_duty));
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, VOLOOP_PFC_GetModulation(&min_duty));
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, min_duty.GridCurrentPID.Integral);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, min_duty.GridCurrentPID.PreviousError);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UnSaturated, min_duty.GridCurrentPID.State);
+    expect_output_disabled(ctx, &output);
+}
+
+static void test_duty_limit_boundaries_remain_enabled(VoloopTestContext* ctx) {
+    PFC_HandleTypeDef max_duty = make_started_pfc(1.0f, 0.0f, 0.0f, 0.0f);
+    PFC_HandleTypeDef min_duty = make_started_pfc(1.0f, 0.0f, 0.0f, 0.0f);
+    PFC_OutputTypeDef output = { 0 };
+    PFC_InputTypeDef input = {
+        .GridVoltage = 370.5f,
+        .GridCurrent = 0.0f,
+        .BusVoltage = 390.0f,
+    };
+
+    force_phase_for_next_sync(&max_duty, VOLOOP_Pi * 0.5f);
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_PFC_Sync(&max_duty, &input, &output));
+    TEST_EXPECT_STATE_EQ(ctx, VOLOOP_PWM_ENABLE, output.LeftLegPwmState);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.95f, output.LeftLegDuty);
+
+    input.GridVoltage = 19.5f;
+    force_phase_for_next_sync(&min_duty, VOLOOP_Pi * 0.5f);
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_PFC_Sync(&min_duty, &input, &output));
+    TEST_EXPECT_STATE_EQ(ctx, VOLOOP_PWM_ENABLE, output.LeftLegPwmState);
     TEST_EXPECT_FLOAT_NEAR(ctx, 0.05f, output.LeftLegDuty);
+}
+
+static void test_zero_bus_voltage_disables_output_and_resets_current_pi(VoloopTestContext* ctx) {
+    PFC_HandleTypeDef pfc = make_started_pfc(1.0f, 0.0f, 0.01f, 0.01f);
+    PFC_OutputTypeDef output = {
+        .LeftLegPwmState = VOLOOP_PWM_ENABLE,
+        .LeftLegDuty = 0.5f,
+        .RightLegPwmState = VOLOOP_PWM_ENABLE,
+        .RightLegDuty = 0.5f,
+    };
+    PFC_InputTypeDef input = {
+        .GridVoltage = 100.0f,
+        .GridCurrent = 0.0f,
+        .BusVoltage = 0.0f,
+    };
+
+    pfc.GridCurrentPID.Integral = 3.0f;
+    pfc.GridCurrentPID.PreviousError = -2.0f;
+    force_phase_for_next_sync(&pfc, VOLOOP_Pi * 0.5f);
+
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_PFC_Sync(&pfc, &input, &output));
+
+    TEST_EXPECT_FAULT_EQ(ctx, PFC_FAULT_NONE, VOLOOP_PFC_GetFaultCode(&pfc));
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, pfc.GridCurrentPID.Integral);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, pfc.GridCurrentPID.PreviousError);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UnSaturated, pfc.GridCurrentPID.State);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, VOLOOP_PFC_GetModulation(&pfc));
+    expect_output_disabled(ctx, &output);
 }
 
 static void test_active_protection_latches_fault_and_stops_pll(VoloopTestContext* ctx) {
@@ -278,8 +338,12 @@ int main(void) {
                     test_negative_half_cycle_aligns_current_measurement);
     voloop_run_test(&ctx, "zero crossing resets current controller",
                     test_zero_crossing_resets_current_controller);
-    voloop_run_test(&ctx, "high frequency duty uses configured limits",
-                    test_high_frequency_duty_uses_configured_limits);
+    voloop_run_test(&ctx, "out of range duty disables output and resets current pi",
+                    test_out_of_range_duty_disables_output_and_resets_current_pi);
+    voloop_run_test(&ctx, "duty limit boundaries remain enabled",
+                    test_duty_limit_boundaries_remain_enabled);
+    voloop_run_test(&ctx, "zero bus voltage disables output and resets current pi",
+                    test_zero_bus_voltage_disables_output_and_resets_current_pi);
     voloop_run_test(&ctx, "active protection latches fault and stops pll",
                     test_active_protection_latches_fault_and_stops_pll);
     voloop_run_test(&ctx, "disabled state ignores power measurements",

@@ -430,21 +430,34 @@ VOLOOP_StatusTypeDef VOLOOP_PFC_Sync(PFC_HandleTypeDef* handle, const PFC_InputT
     if (linePolarity == PFC_LINE_ZERO) {
         (void)VOLOOP_PID_Reset(&(handle->GridCurrentPID));
         handle->Modulation = 0.0f;
+        VOLOOP_PFC_DisableOutput(output);
         return VOLOOP_OK;
     }
 
-    float currentReferenceMagnitude = currentAmplitudeReference * fabsf(sine);
-    float currentMeasurementAligned =
-        (linePolarity == PFC_LINE_POSITIVE) ? input->GridCurrent : -input->GridCurrent;
-    float modulationMagnitude =
-        VOLOOP_PID_ComputeConditional(&(handle->GridCurrentPID), currentReferenceMagnitude,
-                                      currentMeasurementAligned, 0.0f, 1.0f);
-    handle->Modulation =
-        (linePolarity == PFC_LINE_POSITIVE) ? modulationMagnitude : -modulationMagnitude;
+    if (input->BusVoltage <= 0.0f) {
+        (void)VOLOOP_PID_Reset(&(handle->GridCurrentPID));
+        handle->Modulation = 0.0f;
+        VOLOOP_PFC_DisableOutput(output);
+        return VOLOOP_OK;
+    }
 
-    float highFrequencyDuty =
-        VOLOOP_DEF_ClampFloat(1.0f - modulationMagnitude, handle->Config.MinHighFrequencyDuty,
-                              handle->Config.MaxHighFrequencyDuty);
+    float currentReference = currentAmplitudeReference * sine;
+    float currentMeasurementAligned = input->GridCurrent;
+    float currentCorrection =
+        VOLOOP_PID_ComputeConditional(&(handle->GridCurrentPID), currentReference,currentMeasurementAligned, -1.0f, 1.0f);
+    float voltageFeedforward = input->GridVoltage / input->BusVoltage;
+    float modulation = 0.0f * voltageFeedforward - currentCorrection;
+    handle->Modulation = modulation;
+
+    float highFrequencyDuty = 1.0f - fabsf(modulation);
+    if (!VOLOOP_PFC_IsFiniteFloat(highFrequencyDuty) ||
+        highFrequencyDuty < handle->Config.MinHighFrequencyDuty ||
+        highFrequencyDuty > handle->Config.MaxHighFrequencyDuty) {
+        // (void)VOLOOP_PID_Reset(&(handle->GridCurrentPID));
+        // handle->Modulation = 0.0f;
+        VOLOOP_PFC_DisableOutput(output);
+        return VOLOOP_OK;
+    }
 
     output->LeftLegPwmState = VOLOOP_PWM_ENABLE;
     output->RightLegPwmState = VOLOOP_PWM_ENABLE;
