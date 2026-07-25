@@ -446,10 +446,10 @@ VOLOOP_StatusTypeDef VOLOOP_PFC_Sync(PFC_HandleTypeDef* handle, const PFC_InputT
     float currentCorrection =
         VOLOOP_PID_ComputeConditional(&(handle->GridCurrentPID), currentReference,currentMeasurementAligned, -1.0f, 1.0f);
     float voltageFeedforward = input->GridVoltage / input->BusVoltage;
-    float modulation = 0.0f * voltageFeedforward - currentCorrection;
+    float modulation = -1.0f * voltageFeedforward + currentCorrection;
     handle->Modulation = modulation;
 
-    float highFrequencyDuty = 1.0f - fabsf(modulation);
+    float highFrequencyDuty = fabsf(modulation);
     if (!VOLOOP_PFC_IsFiniteFloat(highFrequencyDuty) ||
         highFrequencyDuty < handle->Config.MinHighFrequencyDuty ||
         highFrequencyDuty > handle->Config.MaxHighFrequencyDuty) {
