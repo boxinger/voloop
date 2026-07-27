@@ -21,8 +21,10 @@
  * hardware shutdown.
  *
  * ::VOLOOP_3phOffInv_Sync is called once per control-loop period. The current
- * implementation generates open-loop, positive-sequence three-phase SPWM from
- * an internal NCO while applying sample validation and software protection.
+ * implementation generates open-loop, positive-sequence three-phase THIPWM
+ * from an internal NCO while applying sample validation and software
+ * protection. One sixth of the third harmonic is injected as a common-mode
+ * component, so it cancels from every line-to-line voltage.
  * Its measured-input interface and state model also reserve the data flow
  * required by a future closed-loop implementation without changing the public
  * sync signature.
@@ -274,9 +276,9 @@ int32_t VOLOOP_3phOffInv_GetPhaseQ31(const ThreePhOffInv_HandleTypeDef* handle);
  * The output is first initialized to a safe disabled recommendation. While
  * running, this function validates all five measured samples, reconstructs
  * line voltage BC and phase current C, applies configured protection, and
- * generates fixed-modulation positive-sequence SPWM commands. The first update
- * after each start uses the configured initial phase; the NCO is advanced for
- * the following update.
+ * generates fixed-modulation positive-sequence THIPWM commands with one-sixth
+ * third-harmonic common-mode injection. The first update after each start uses
+ * the configured initial phase; the NCO is advanced for the following update.
  *
  * A newly detected protection or child-module fault disables all bridge legs,
  * stops the NCO, latches ::THREEPHOFFINV_ERROR, and returns ::VOLOOP_ERROR.

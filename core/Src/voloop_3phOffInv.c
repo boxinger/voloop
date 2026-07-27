@@ -3,6 +3,7 @@
 #include <math.h>
 
 #define THREEPHOFFINV_OPEN_LOOP_MODULATION 0.50f
+#define THREEPHOFFINV_THIRD_HARMONIC_RATIO (1.0f / 6.0f)
 #define THREEPHOFFINV_PHASE_120_Q31 0x55555555U
 
 static int VOLOOP_3phOffInv_IsFiniteFloat(float value) {
@@ -278,9 +279,12 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Sync(ThreePhOffInv_HandleTypeDef* handle,
 
     int32_t phaseBQ31 = (int32_t)((uint32_t)outputPhaseQ31 - THREEPHOFFINV_PHASE_120_Q31);
     int32_t phaseCQ31 = (int32_t)((uint32_t)outputPhaseQ31 + THREEPHOFFINV_PHASE_120_Q31);
-    float phaseAReference = VOLOOP_DEF_SIN(outputPhaseQ31);
-    float phaseBReference = VOLOOP_DEF_SIN(phaseBQ31);
-    float phaseCReference = VOLOOP_DEF_SIN(phaseCQ31);
+    int32_t thirdHarmonicPhaseQ31 = (int32_t)((uint32_t)outputPhaseQ31 * 3U);
+    float thirdHarmonic =
+        THREEPHOFFINV_THIRD_HARMONIC_RATIO * VOLOOP_DEF_SIN(thirdHarmonicPhaseQ31);
+    float phaseAReference = VOLOOP_DEF_SIN(outputPhaseQ31) + thirdHarmonic;
+    float phaseBReference = VOLOOP_DEF_SIN(phaseBQ31) + thirdHarmonic;
+    float phaseCReference = VOLOOP_DEF_SIN(phaseCQ31) + thirdHarmonic;
     float dutyScale = 0.5f * THREEPHOFFINV_OPEN_LOOP_MODULATION;
 
     output->PhaseAPwmState = VOLOOP_PWM_ENABLE;
