@@ -47,3 +47,21 @@ voloop_add_c_test(voloop_pid_property
         property
         pid
 )
+
+voloop_add_c_test(voloop_3phoffinv_guard
+    SOURCES
+        3phoffinv/test_3phoffinv_guard.c
+    LABELS
+        L1
+        guard
+        3phoffinv
+)
+
+voloop_add_c_test(voloop_3phoffinv_property
+    SOURCES
+        3phoffinv/test_3phoffinv_property.c
+    LABELS
+        L2
+        property
+        3phoffinv
+)

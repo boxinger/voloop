@@ -13,6 +13,7 @@ target_sources(voloop
         Src/voloop_pid.c
         Src/voloop_pll.c
         Src/voloop_qpr.c
+        Src/voloop_3phOffInv.c
 )
 
 target_include_directories(voloop
