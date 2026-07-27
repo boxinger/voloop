@@ -183,6 +183,42 @@ typedef enum {
     VOLOOP_PWM_ENABLE,        /**< PWM output is enabled. */
 } VOLOOP_DEF_PwmStateTypeDef;
 
+typedef struct {
+    float a;
+    float b;
+    float c;
+} VOLOOP_DEF_AbcTypeDef;
+
+typedef struct {
+    float alpha;
+    float beta;
+    float zero;
+} VOLOOP_DEF_AlphaBetaZeroTypeDef;
+
+typedef struct {
+    float d;
+    float q;
+    float zero;
+} VOLOOP_DEF_DqZeroTypeDef;
+
+void VOLOOP_DEF_ClarkeTransform(
+    const VOLOOP_DEF_AbcTypeDef* input,
+    VOLOOP_DEF_AlphaBetaZeroTypeDef* output);
+
+void VOLOOP_DEF_InverseClarkeTransform(
+    const VOLOOP_DEF_AlphaBetaZeroTypeDef* input,
+    VOLOOP_DEF_AbcTypeDef* output);
+
+void VOLOOP_DEF_ParkTransform(
+    const VOLOOP_DEF_AlphaBetaZeroTypeDef* input,
+    int32_t phaseQ31,
+    VOLOOP_DEF_DqZeroTypeDef* output);
+
+void VOLOOP_DEF_InverseParkTransform(
+    const VOLOOP_DEF_DqZeroTypeDef* input,
+    int32_t phaseQ31,
+    VOLOOP_DEF_AlphaBetaZeroTypeDef* output);
+
 /** @} */
 
 #endif /* VOLOOP_DEF_H */
