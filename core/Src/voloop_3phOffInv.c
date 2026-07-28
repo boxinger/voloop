@@ -106,6 +106,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Init(ThreePhOffInv_HandleTypeDef* handle,
         return status;
     }
 
+    handle->TargetLineVoltagePeak = 0.0f;
     handle->InitialPhaseRad = init->NCOInit->initialRad;
     handle->OutputPhaseQ31 = VOLOOP_NCO_GetPhaseQ31(&(handle->NCO));
     handle->State = THREEPHOFFINV_DISABLED;
@@ -218,6 +219,26 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_SetFrequency(ThreePhOffInv_HandleTypeDef* 
     }
 
     return VOLOOP_NCO_SetFrequency(&(handle->NCO), frequency);
+}
+
+VOLOOP_StatusTypeDef VOLOOP_3phOffInv_SetLineVoltagePeak(
+    ThreePhOffInv_HandleTypeDef* handle,
+    float lineVoltagePeak) {
+    if (handle == NULL) {
+        return VOLOOP_INVALID_PARAM;
+    }
+    if (handle->State != THREEPHOFFINV_DISABLED &&
+        handle->State != THREEPHOFFINV_RUNNING) {
+        return VOLOOP_INVALID_STATE;
+    }
+    if (!VOLOOP_3phOffInv_IsFiniteFloat(lineVoltagePeak) ||
+        lineVoltagePeak < 0.0f ||
+        lineVoltagePeak > handle->Config.LineOverVoltageThreshold) {
+        return VOLOOP_INVALID_PARAM;
+    }
+
+    handle->TargetLineVoltagePeak = lineVoltagePeak;
+    return VOLOOP_OK;
 }
 
 ThreePhOffInv_StateTypeDef VOLOOP_3phOffInv_GetState(const ThreePhOffInv_HandleTypeDef* handle) {

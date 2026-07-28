@@ -162,6 +162,7 @@ typedef struct {
     NCO_HandleTypeDef NCO;                    /**< Internal fundamental-phase generator. */
     PID_HandleTypeDef VoltageDController;     /**< D-axis voltage-loop controller. */
     PID_HandleTypeDef VoltageQController;     /**< Q-axis voltage-loop controller. */
+    float TargetLineVoltagePeak;              /**< Requested line-to-line voltage peak. */
     float InitialPhaseRad;                    /**< Phase restored by each successful start. */
     int32_t OutputPhaseQ31;                   /**< Phase used for the latest output command. */
     ThreePhOffInv_StateTypeDef State;         /**< Current runtime state. */
@@ -238,6 +239,21 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_ClearFaultCode(ThreePhOffInv_HandleTypeDef
  */
 VOLOOP_StatusTypeDef VOLOOP_3phOffInv_SetFrequency(ThreePhOffInv_HandleTypeDef* handle,
                                                    float frequency);
+
+/**
+ * @brief Set the target line-to-line output-voltage peak.
+ *
+ * This function is valid in ::THREEPHOFFINV_DISABLED and
+ * ::THREEPHOFFINV_RUNNING. A zero target is valid. The target must not exceed
+ * ::ThreePhOffInv_ConfigTypeDef::LineOverVoltageThreshold.
+ *
+ * @param handle Inverter handle.
+ * @param lineVoltagePeak Target line-to-line voltage peak.
+ * @return ::VOLOOP_OK on success, otherwise a voloop status code.
+ */
+VOLOOP_StatusTypeDef VOLOOP_3phOffInv_SetLineVoltagePeak(
+    ThreePhOffInv_HandleTypeDef* handle,
+    float lineVoltagePeak);
 
 /**
  * @brief Get the current inverter state.

@@ -220,6 +220,55 @@ static void test_invalid_voltage_controller_init_rolls_back(VoloopTestContext* c
     VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageQController.KpDiscrete, 0.0f);
 }
 
+static void test_line_voltage_peak_setter(VoloopTestContext* ctx) {
+    ThreePhOffInv_HandleTypeDef handle = { 0 };
+
+    TEST_EXPECT_STATUS_EQ(
+        ctx, VOLOOP_INVALID_PARAM,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(NULL, 100.0f));
+    TEST_EXPECT_STATUS_EQ(
+        ctx, VOLOOP_INVALID_STATE,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(&handle, 100.0f));
+
+    init_inverter(ctx, &handle);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.TargetLineVoltagePeak, 0.0f);
+
+    TEST_EXPECT_STATUS_EQ(
+        ctx, VOLOOP_INVALID_PARAM,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(&handle, NAN));
+    TEST_EXPECT_STATUS_EQ(
+        ctx, VOLOOP_INVALID_PARAM,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(&handle, -1.0f));
+    TEST_EXPECT_STATUS_EQ(
+        ctx, VOLOOP_INVALID_PARAM,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(
+            &handle, handle.Config.LineOverVoltageThreshold + 1.0f));
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.TargetLineVoltagePeak, 0.0f);
+
+    TEST_REQUIRE_STATUS_EQ(
+        ctx, VOLOOP_OK,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(&handle, 0.0f));
+    TEST_REQUIRE_STATUS_EQ(
+        ctx, VOLOOP_OK,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(
+            &handle, handle.Config.LineOverVoltageThreshold));
+    VOLOOP_EXPECT_FLOAT_NEAR(
+        ctx, handle.Config.LineOverVoltageThreshold,
+        handle.TargetLineVoltagePeak, 0.0f);
+
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Start(&handle));
+    TEST_REQUIRE_STATUS_EQ(
+        ctx, VOLOOP_OK,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(&handle, 325.0f));
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 325.0f, handle.TargetLineVoltagePeak, 0.0f);
+
+    handle.State = THREEPHOFFINV_ERROR;
+    TEST_EXPECT_STATUS_EQ(
+        ctx, VOLOOP_INVALID_STATE,
+        VOLOOP_3phOffInv_SetLineVoltagePeak(&handle, 200.0f));
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 325.0f, handle.TargetLineVoltagePeak, 0.0f);
+}
+
 int main(void) {
     VoloopTestContext ctx = VOLOOP_TEST_CONTEXT_INIT;
 
@@ -233,6 +282,8 @@ int main(void) {
                     test_voltage_controller_lifecycle);
     voloop_run_test(&ctx, "invalid voltage controller init rolls back",
                     test_invalid_voltage_controller_init_rolls_back);
+    voloop_run_test(&ctx, "line voltage peak setter",
+                    test_line_voltage_peak_setter);
 
     return voloop_test_report(&ctx);
 }
