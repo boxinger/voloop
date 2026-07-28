@@ -42,17 +42,31 @@ static void VOLOOP_3phOffInv_DisableOutput(ThreePhOffInv_OutputTypeDef* output) 
     output->PhaseCDuty = 0.0f;
 }
 
+static void VOLOOP_3phOffInv_ResetVoltageControllers(ThreePhOffInv_HandleTypeDef* handle) {
+    (void)VOLOOP_PID_Reset(&(handle->VoltageDController));
+    (void)VOLOOP_PID_Reset(&(handle->VoltageQController));
+}
+
+static void VOLOOP_3phOffInv_DeInitVoltageControllers(ThreePhOffInv_HandleTypeDef* handle) {
+    (void)VOLOOP_PID_DeInit(&(handle->VoltageDController));
+    (void)VOLOOP_PID_DeInit(&(handle->VoltageQController));
+}
+
 static void VOLOOP_3phOffInv_EnterFault(ThreePhOffInv_HandleTypeDef* handle,
                                         ThreePhOffInv_FaultCodeTypeDef faultCode) {
     if (VOLOOP_NCO_GetState(&(handle->NCO)) == NCO_RUNNING) {
         (void)VOLOOP_NCO_Stop(&(handle->NCO));
     }
 
-    handle->FaultCode = faultCode;
+    if (handle->State != THREEPHOFFINV_ERROR ||
+        handle->FaultCode == THREEPHOFFINV_FAULT_NONE) {
+        handle->FaultCode = faultCode;
+    }
     handle->State = THREEPHOFFINV_ERROR;
 }
 
 static void VOLOOP_3phOffInv_ClearHandle(ThreePhOffInv_HandleTypeDef* handle) {
+    VOLOOP_3phOffInv_DeInitVoltageControllers(handle);
     (void)VOLOOP_NCO_DeInit(&(handle->NCO));
     *handle = (ThreePhOffInv_HandleTypeDef){ 0 };
 }
@@ -62,7 +76,9 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Init(ThreePhOffInv_HandleTypeDef* handle,
     if (handle == NULL || init == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
-    if (!VOLOOP_3phOffInv_IsConfigValid(init->Config)) {
+    if (!VOLOOP_3phOffInv_IsConfigValid(init->Config) ||
+        init->VoltageDControllerInit == NULL ||
+        init->VoltageQControllerInit == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -71,7 +87,20 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Init(ThreePhOffInv_HandleTypeDef* handle,
     handle->State = THREEPHOFFINV_RESET;
     handle->FaultCode = THREEPHOFFINV_FAULT_NONE;
 
-    VOLOOP_StatusTypeDef status = VOLOOP_NCO_Init(&(handle->NCO), init->NCOInit);
+    VOLOOP_StatusTypeDef status =
+        VOLOOP_PID_Init(&(handle->VoltageDController), init->VoltageDControllerInit);
+    if (status != VOLOOP_OK) {
+        VOLOOP_3phOffInv_ClearHandle(handle);
+        return status;
+    }
+
+    status = VOLOOP_PID_Init(&(handle->VoltageQController), init->VoltageQControllerInit);
+    if (status != VOLOOP_OK) {
+        VOLOOP_3phOffInv_ClearHandle(handle);
+        return status;
+    }
+
+    status = VOLOOP_NCO_Init(&(handle->NCO), init->NCOInit);
     if (status != VOLOOP_OK) {
         VOLOOP_3phOffInv_ClearHandle(handle);
         return status;
@@ -103,6 +132,8 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Start(ThreePhOffInv_HandleTypeDef* handle)
         return VOLOOP_INVALID_STATE;
     }
 
+    VOLOOP_3phOffInv_ResetVoltageControllers(handle);
+
     VOLOOP_StatusTypeDef status = VOLOOP_NCO_SetRad(&(handle->NCO), handle->InitialPhaseRad);
     if (status != VOLOOP_OK) {
         VOLOOP_3phOffInv_EnterFault(handle, THREEPHOFFINV_FAULT_NCO);
@@ -125,6 +156,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Stop(ThreePhOffInv_HandleTypeDef* handle) 
         return VOLOOP_INVALID_PARAM;
     }
     if (handle->State == THREEPHOFFINV_DISABLED) {
+        VOLOOP_3phOffInv_ResetVoltageControllers(handle);
         return VOLOOP_OK;
     }
     if (handle->State != THREEPHOFFINV_RUNNING) {
@@ -137,6 +169,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Stop(ThreePhOffInv_HandleTypeDef* handle) 
         return status;
     }
 
+    VOLOOP_3phOffInv_ResetVoltageControllers(handle);
     handle->State = THREEPHOFFINV_DISABLED;
     return VOLOOP_OK;
 }
@@ -161,6 +194,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_ClearFaultCode(ThreePhOffInv_HandleTypeDef
         return status;
     }
 
+    VOLOOP_3phOffInv_ResetVoltageControllers(handle);
     handle->FaultCode = THREEPHOFFINV_FAULT_NONE;
     handle->State = THREEPHOFFINV_DISABLED;
     return VOLOOP_OK;

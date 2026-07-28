@@ -20,6 +20,18 @@ static NCO_InitTypeDef make_nco_init(float initialRad) {
     return init;
 }
 
+static PID_InitTypeDef make_pid_init(void) {
+    PID_InitTypeDef init = {
+        .mode = PID_OneZero,
+        .init.OneZero = {
+            .gain = 0.001f,
+            .zero = 20.0f,
+            .triggerFrequency = 1000U,
+        },
+    };
+    return init;
+}
+
 static ThreePhOffInv_ConfigTypeDef make_config(void) {
     ThreePhOffInv_ConfigTypeDef config = {
         .LineOverVoltageThreshold = 500.0f,
@@ -43,10 +55,14 @@ static ThreePhOffInv_InputTypeDef make_valid_input(void) {
 
 static void init_inverter(VoloopTestContext* ctx, ThreePhOffInv_HandleTypeDef* handle) {
     NCO_InitTypeDef ncoInit = make_nco_init(0.0f);
+    PID_InitTypeDef voltageDInit = make_pid_init();
+    PID_InitTypeDef voltageQInit = make_pid_init();
     ThreePhOffInv_ConfigTypeDef config = make_config();
     ThreePhOffInv_InitTypeDef init = {
         .NCOInit = &ncoInit,
         .Config = &config,
+        .VoltageDControllerInit = &voltageDInit,
+        .VoltageQControllerInit = &voltageQInit,
     };
 
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Init(handle, &init));
@@ -130,12 +146,78 @@ static void test_fault_can_be_cleared_without_restarting_output(VoloopTestContex
 
     init_inverter(ctx, &handle);
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Start(&handle));
+    handle.VoltageDController.Integral = 12.0f;
+    handle.VoltageDController.PreviousError = -3.0f;
+    handle.VoltageDController.State = PID_UpperSaturated;
+    handle.VoltageQController.Integral = -8.0f;
+    handle.VoltageQController.PreviousError = 2.0f;
+    handle.VoltageQController.State = PID_LowerSaturated;
     input.BusVoltage = 299.0f;
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_ERROR, VOLOOP_3phOffInv_Sync(&handle, &input, &output));
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 12.0f, handle.VoltageDController.Integral, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, -3.0f, handle.VoltageDController.PreviousError, 0.0f);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UpperSaturated, handle.VoltageDController.State);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, -8.0f, handle.VoltageQController.Integral, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 2.0f, handle.VoltageQController.PreviousError, 0.0f);
+    TEST_EXPECT_STATE_EQ(ctx, PID_LowerSaturated, handle.VoltageQController.State);
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_ClearFaultCode(&handle));
     TEST_EXPECT_STATE_EQ(ctx, THREEPHOFFINV_DISABLED, VOLOOP_3phOffInv_GetState(&handle));
     TEST_EXPECT_STATE_EQ(ctx, THREEPHOFFINV_FAULT_NONE, VOLOOP_3phOffInv_GetFaultCode(&handle));
     TEST_EXPECT_STATE_EQ(ctx, NCO_STOPPED, VOLOOP_NCO_GetState(&handle.NCO));
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageDController.Integral, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageDController.PreviousError, 0.0f);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UnSaturated, handle.VoltageDController.State);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageQController.Integral, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageQController.PreviousError, 0.0f);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UnSaturated, handle.VoltageQController.State);
+}
+
+static void test_voltage_controller_lifecycle(VoloopTestContext* ctx) {
+    ThreePhOffInv_HandleTypeDef handle = { 0 };
+
+    init_inverter(ctx, &handle);
+    handle.VoltageDController.Integral = 4.0f;
+    handle.VoltageQController.PreviousError = -5.0f;
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Start(&handle));
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageDController.Integral, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageQController.PreviousError, 0.0f);
+
+    handle.VoltageDController.Integral = 6.0f;
+    handle.VoltageQController.PreviousError = -7.0f;
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Start(&handle));
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 6.0f, handle.VoltageDController.Integral, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, -7.0f, handle.VoltageQController.PreviousError, 0.0f);
+
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Stop(&handle));
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageDController.Integral, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageQController.PreviousError, 0.0f);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UnSaturated, handle.VoltageDController.State);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UnSaturated, handle.VoltageQController.State);
+
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_DeInit(&handle));
+    TEST_EXPECT_STATE_EQ(ctx, THREEPHOFFINV_RESET, handle.State);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageDController.KpDiscrete, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageQController.KpDiscrete, 0.0f);
+}
+
+static void test_invalid_voltage_controller_init_rolls_back(VoloopTestContext* ctx) {
+    ThreePhOffInv_HandleTypeDef handle = { 0 };
+    NCO_InitTypeDef ncoInit = make_nco_init(0.0f);
+    PID_InitTypeDef voltageDInit = make_pid_init();
+    PID_InitTypeDef voltageQInit = make_pid_init();
+    ThreePhOffInv_ConfigTypeDef config = make_config();
+    voltageQInit.init.OneZero.triggerFrequency = 0U;
+    ThreePhOffInv_InitTypeDef init = {
+        .NCOInit = &ncoInit,
+        .Config = &config,
+        .VoltageDControllerInit = &voltageDInit,
+        .VoltageQControllerInit = &voltageQInit,
+    };
+
+    TEST_EXPECT_STATUS_EQ(ctx, VOLOOP_INVALID_PARAM, VOLOOP_3phOffInv_Init(&handle, &init));
+    TEST_EXPECT_STATE_EQ(ctx, THREEPHOFFINV_RESET, handle.State);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageDController.KpDiscrete, 0.0f);
+    VOLOOP_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageQController.KpDiscrete, 0.0f);
 }
 
 int main(void) {
@@ -147,6 +229,10 @@ int main(void) {
                     test_sync_latches_sample_and_reconstructed_protection_faults);
     voloop_run_test(&ctx, "fault clears without restart",
                     test_fault_can_be_cleared_without_restarting_output);
+    voloop_run_test(&ctx, "voltage controller lifecycle",
+                    test_voltage_controller_lifecycle);
+    voloop_run_test(&ctx, "invalid voltage controller init rolls back",
+                    test_invalid_voltage_controller_init_rolls_back);
 
     return voloop_test_report(&ctx);
 }

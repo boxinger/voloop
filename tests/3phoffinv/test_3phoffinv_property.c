@@ -24,6 +24,18 @@ static NCO_InitTypeDef make_nco_init(float initialRad) {
     return init;
 }
 
+static PID_InitTypeDef make_pid_init(void) {
+    PID_InitTypeDef init = {
+        .mode = PID_OneZero,
+        .init.OneZero = {
+            .gain = 0.001f,
+            .zero = 20.0f,
+            .triggerFrequency = 1000U,
+        },
+    };
+    return init;
+}
+
 static ThreePhOffInv_ConfigTypeDef make_config(void) {
     ThreePhOffInv_ConfigTypeDef config = {
         .LineOverVoltageThreshold = 500.0f,
@@ -44,10 +56,14 @@ static ThreePhOffInv_InputTypeDef make_valid_input(void) {
 static void init_running(VoloopTestContext* ctx, ThreePhOffInv_HandleTypeDef* handle,
                          float initialRad) {
     NCO_InitTypeDef ncoInit = make_nco_init(initialRad);
+    PID_InitTypeDef voltageDInit = make_pid_init();
+    PID_InitTypeDef voltageQInit = make_pid_init();
     ThreePhOffInv_ConfigTypeDef config = make_config();
     ThreePhOffInv_InitTypeDef init = {
         .NCOInit = &ncoInit,
         .Config = &config,
+        .VoltageDControllerInit = &voltageDInit,
+        .VoltageQControllerInit = &voltageQInit,
     };
 
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Init(handle, &init));

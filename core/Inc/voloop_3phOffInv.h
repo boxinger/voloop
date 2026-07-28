@@ -7,6 +7,7 @@
 
 #include "voloop_def.h"
 #include "voloop_nco.h"
+#include "voloop_pid.h"
 
 #include <stdint.h>
 
@@ -112,17 +113,16 @@ typedef struct {
  * alive afterward. NCO configuration validation is delegated to
  * ::VOLOOP_NCO_Init.
  *
- * Four opaque controller-configuration pointers reserve the public interface
- * for a future d-q voltage-outer-loop and current-inner-loop implementation.
- * The open-loop implementation does not validate, dereference, copy, or retain
- * these pointers, and all four may be NULL. Applications own the controller
- * types, configuration contents, and lifecycle.
+ * The d-q voltage-controller configurations are consumed by
+ * ::VOLOOP_3phOffInv_Init and copied into controller handles owned by the
+ * inverter handle. The current-controller pointers remain reserved for a
+ * future current inner loop and are not accessed by the current implementation.
  */
 typedef struct {
     const NCO_InitTypeDef* NCOInit;            /**< Internal NCO initialization. */
     const ThreePhOffInv_ConfigTypeDef* Config; /**< Protection configuration. */
-    const void* VoltageDControllerInit;        /**< Reserved d-axis voltage-loop configuration. */
-    const void* VoltageQControllerInit;        /**< Reserved q-axis voltage-loop configuration. */
+    const PID_InitTypeDef* VoltageDControllerInit; /**< D-axis voltage-controller initialization. */
+    const PID_InitTypeDef* VoltageQControllerInit; /**< Q-axis voltage-controller initialization. */
     const void* CurrentDControllerInit;        /**< Reserved d-axis current-loop configuration. */
     const void* CurrentQControllerInit;        /**< Reserved q-axis current-loop configuration. */
 } ThreePhOffInv_InitTypeDef;
@@ -160,6 +160,8 @@ typedef enum {
 typedef struct {
     ThreePhOffInv_ConfigTypeDef Config;       /**< Copied protection configuration. */
     NCO_HandleTypeDef NCO;                    /**< Internal fundamental-phase generator. */
+    PID_HandleTypeDef VoltageDController;     /**< D-axis voltage-loop controller. */
+    PID_HandleTypeDef VoltageQController;     /**< Q-axis voltage-loop controller. */
     float InitialPhaseRad;                    /**< Phase restored by each successful start. */
     int32_t OutputPhaseQ31;                   /**< Phase used for the latest output command. */
     ThreePhOffInv_StateTypeDef State;         /**< Current runtime state. */
@@ -170,8 +172,9 @@ typedef struct {
  * @brief Initialize a three-phase off-grid inverter.
  *
  * This function validates and copies the inverter protection configuration,
- * delegates NCO configuration validation and initialization to
- * ::VOLOOP_NCO_Init, and enters ::THREEPHOFFINV_DISABLED.
+ * initializes the owned d-q voltage controllers, delegates NCO configuration
+ * validation and initialization to ::VOLOOP_NCO_Init, and enters
+ * ::THREEPHOFFINV_DISABLED.
  *
  * @param handle Inverter handle to initialize.
  * @param init Initialization parameters.
@@ -191,9 +194,10 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_DeInit(ThreePhOffInv_HandleTypeDef* handle
 /**
  * @brief Start open-loop three-phase output.
  *
- * Every successful start restores the NCO to the initial phase supplied during
- * initialization. The first later sync call therefore generates its output
- * from that exact phase.
+ * Every successful start resets both voltage controllers and restores the NCO
+ * to the initial phase supplied during initialization. The first later sync
+ * call therefore generates its output from that exact phase. Calling start
+ * while already running is idempotent and does not reset controller state.
  *
  * @param handle Inverter handle.
  * @return ::VOLOOP_OK on success, otherwise a voloop status code.
@@ -201,7 +205,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_DeInit(ThreePhOffInv_HandleTypeDef* handle
 VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Start(ThreePhOffInv_HandleTypeDef* handle);
 
 /**
- * @brief Stop three-phase output and stop the internal NCO.
+ * @brief Stop three-phase output, stop the internal NCO, and reset both voltage controllers.
  *
  * @param handle Inverter handle.
  * @return ::VOLOOP_OK on success, otherwise a voloop status code.
@@ -212,8 +216,9 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Stop(ThreePhOffInv_HandleTypeDef* handle);
  * @brief Clear a latched fault.
  *
  * This operation is valid only in ::THREEPHOFFINV_ERROR or
- * ::THREEPHOFFINV_DISABLED. On success, the module returns to
- * ::THREEPHOFFINV_DISABLED; it does not restart power output.
+ * ::THREEPHOFFINV_DISABLED. Fault entry preserves both voltage-controller
+ * histories for diagnosis. A successful clear resets those histories, returns
+ * the module to ::THREEPHOFFINV_DISABLED, and does not restart power output.
  *
  * @param handle Inverter handle.
  * @return ::VOLOOP_OK on success, otherwise a voloop status code.
