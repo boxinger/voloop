@@ -316,7 +316,8 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Sync(ThreePhOffInv_HandleTypeDef* handle,
         VOLOOP_3phOffInv_EnterFault(handle, THREEPHOFFINV_FAULT_PHASE_OVERCURRENT);
         return VOLOOP_ERROR;
     }
-    if (input->BusVoltage < handle->Config.BusUnderVoltageThreshold) {
+    if (input->BusVoltage <= 0.0f ||
+        input->BusVoltage < handle->Config.BusUnderVoltageThreshold) {
         VOLOOP_3phOffInv_EnterFault(handle, THREEPHOFFINV_FAULT_BUS_UNDERVOLTAGE);
         return VOLOOP_ERROR;
     }
@@ -332,22 +333,85 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Sync(ThreePhOffInv_HandleTypeDef* handle,
         return VOLOOP_ERROR;
     }
 
-    int32_t phaseBQ31 = (int32_t)((uint32_t)outputPhaseQ31 - THREEPHOFFINV_PHASE_120_Q31);
-    int32_t phaseCQ31 = (int32_t)((uint32_t)outputPhaseQ31 + THREEPHOFFINV_PHASE_120_Q31);
-    int32_t thirdHarmonicPhaseQ31 = (int32_t)((uint32_t)outputPhaseQ31 * 3U);
-    float thirdHarmonic =
-        THREEPHOFFINV_THIRD_HARMONIC_RATIO * VOLOOP_DEF_SIN(thirdHarmonicPhaseQ31);
-    float phaseAReference = VOLOOP_DEF_SIN(outputPhaseQ31) + thirdHarmonic;
-    float phaseBReference = VOLOOP_DEF_SIN(phaseBQ31) + thirdHarmonic;
-    float phaseCReference = VOLOOP_DEF_SIN(phaseCQ31) + thirdHarmonic;
-    float dutyScale = 0.5f * THREEPHOFFINV_OPEN_LOOP_MODULATION;
+    const float oneOverSqrt3 = 0.57735026918962576451f;
+    const float modulationMax = 1.15470053837925152902f;
+    const int32_t quarterCycleQ31 = (int32_t)0x40000000U;
+
+    VOLOOP_DEF_AbcTypeDef measuredPhaseVoltage = {
+        .a = (input->LineVoltageAB + input->LineVoltageAC) * (1.0f / 3.0f),
+    };
+    measuredPhaseVoltage.b = measuredPhaseVoltage.a - input->LineVoltageAB;
+    measuredPhaseVoltage.c = measuredPhaseVoltage.a - input->LineVoltageAC;
+
+    VOLOOP_DEF_AlphaBetaZeroTypeDef measuredAlphaBetaVoltage = { 0 };
+    VOLOOP_DEF_ClarkeTransform(&measuredPhaseVoltage, &measuredAlphaBetaVoltage);
+
+    int32_t parkPhaseQ31 =
+        (int32_t)((uint32_t)outputPhaseQ31 - (uint32_t)quarterCycleQ31);
+    VOLOOP_DEF_DqZeroTypeDef measuredDqVoltage = { 0 };
+    VOLOOP_DEF_ParkTransform(&measuredAlphaBetaVoltage, parkPhaseQ31,
+                             &measuredDqVoltage);
+
+    float dVoltageReference = handle->TargetLineVoltagePeak * oneOverSqrt3;
+    float dVoltageFeedforward =
+        (2.0f * dVoltageReference) / input->BusVoltage;
+    float dCorrection = VOLOOP_PID_ComputeConditional(
+        &(handle->VoltageDController), dVoltageReference, measuredDqVoltage.d,
+        -modulationMax - dVoltageFeedforward,
+        modulationMax - dVoltageFeedforward);
+    float dModulation = VOLOOP_DEF_ClampFloat(
+        dVoltageFeedforward + dCorrection, -modulationMax, modulationMax);
+
+    float qModulationHeadroomSquared =
+        (modulationMax * modulationMax) - (dModulation * dModulation);
+    if (qModulationHeadroomSquared < 0.0f) {
+        qModulationHeadroomSquared = 0.0f;
+    }
+    float qModulationHeadroom = sqrtf(qModulationHeadroomSquared);
+    float qModulation = VOLOOP_PID_ComputeConditional(
+        &(handle->VoltageQController), 0.0f, measuredDqVoltage.q,
+        -qModulationHeadroom, qModulationHeadroom);
+
+    VOLOOP_DEF_DqZeroTypeDef modulationDq = {
+        .d = dModulation,
+        .q = qModulation,
+        .zero = 0.0f,
+    };
+    VOLOOP_DEF_AlphaBetaZeroTypeDef modulationAlphaBeta = { 0 };
+    VOLOOP_DEF_InverseParkTransform(&modulationDq, parkPhaseQ31,
+                                    &modulationAlphaBeta);
+
+    VOLOOP_DEF_AbcTypeDef phaseModulation = { 0 };
+    VOLOOP_DEF_InverseClarkeTransform(&modulationAlphaBeta, &phaseModulation);
+
+    float modulationMaximum = phaseModulation.a;
+    float modulationMinimum = phaseModulation.a;
+    if (phaseModulation.b > modulationMaximum) {
+        modulationMaximum = phaseModulation.b;
+    }
+    if (phaseModulation.c > modulationMaximum) {
+        modulationMaximum = phaseModulation.c;
+    }
+    if (phaseModulation.b < modulationMinimum) {
+        modulationMinimum = phaseModulation.b;
+    }
+    if (phaseModulation.c < modulationMinimum) {
+        modulationMinimum = phaseModulation.c;
+    }
+    float commonModeModulation = -0.5f * (modulationMaximum + modulationMinimum);
 
     output->PhaseAPwmState = VOLOOP_PWM_ENABLE;
-    output->PhaseADuty = VOLOOP_DEF_ClampFloat(0.5f + (dutyScale * phaseAReference), 0.0f, 1.0f);
+    output->PhaseADuty = VOLOOP_DEF_ClampFloat(
+        0.5f + (0.5f * (phaseModulation.a + commonModeModulation)),
+        0.0f, 1.0f);
     output->PhaseBPwmState = VOLOOP_PWM_ENABLE;
-    output->PhaseBDuty = VOLOOP_DEF_ClampFloat(0.5f + (dutyScale * phaseBReference), 0.0f, 1.0f);
+    output->PhaseBDuty = VOLOOP_DEF_ClampFloat(
+        0.5f + (0.5f * (phaseModulation.b + commonModeModulation)),
+        0.0f, 1.0f);
     output->PhaseCPwmState = VOLOOP_PWM_ENABLE;
-    output->PhaseCDuty = VOLOOP_DEF_ClampFloat(0.5f + (dutyScale * phaseCReference), 0.0f, 1.0f);
+    output->PhaseCDuty = VOLOOP_DEF_ClampFloat(
+        0.5f + (0.5f * (phaseModulation.c + commonModeModulation)),
+        0.0f, 1.0f);
 
     handle->OutputPhaseQ31 = outputPhaseQ31;
     return VOLOOP_OK;

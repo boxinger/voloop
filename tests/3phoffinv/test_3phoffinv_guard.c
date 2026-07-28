@@ -139,6 +139,33 @@ static void test_sync_latches_sample_and_reconstructed_protection_faults(VoloopT
     expect_fault(ctx, input, THREEPHOFFINV_FAULT_BUS_OVERVOLTAGE);
 }
 
+static void test_zero_bus_voltage_latches_undervoltage_with_zero_threshold(
+    VoloopTestContext* ctx) {
+    ThreePhOffInv_HandleTypeDef handle = { 0 };
+    NCO_InitTypeDef ncoInit = make_nco_init(0.0f);
+    PID_InitTypeDef voltageDInit = make_pid_init();
+    PID_InitTypeDef voltageQInit = make_pid_init();
+    ThreePhOffInv_ConfigTypeDef config = make_config();
+    config.BusUnderVoltageThreshold = 0.0f;
+    ThreePhOffInv_InitTypeDef init = {
+        .NCOInit = &ncoInit,
+        .Config = &config,
+        .VoltageDControllerInit = &voltageDInit,
+        .VoltageQControllerInit = &voltageQInit,
+    };
+    ThreePhOffInv_InputTypeDef input = make_valid_input();
+    input.BusVoltage = 0.0f;
+    ThreePhOffInv_OutputTypeDef output = { 0 };
+
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Init(&handle, &init));
+    TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Start(&handle));
+    TEST_EXPECT_STATUS_EQ(ctx, VOLOOP_ERROR,
+                          VOLOOP_3phOffInv_Sync(&handle, &input, &output));
+    TEST_EXPECT_STATE_EQ(ctx, THREEPHOFFINV_ERROR, handle.State);
+    TEST_EXPECT_STATE_EQ(ctx, THREEPHOFFINV_FAULT_BUS_UNDERVOLTAGE, handle.FaultCode);
+    expect_output_disabled(ctx, &output);
+}
+
 static void test_fault_can_be_cleared_without_restarting_output(VoloopTestContext* ctx) {
     ThreePhOffInv_HandleTypeDef handle = { 0 };
     ThreePhOffInv_InputTypeDef input = make_valid_input();
@@ -276,6 +303,8 @@ int main(void) {
                     test_sync_guards_arguments_and_disabled_state);
     voloop_run_test(&ctx, "sync latches sample and protection faults",
                     test_sync_latches_sample_and_reconstructed_protection_faults);
+    voloop_run_test(&ctx, "zero bus voltage latches undervoltage",
+                    test_zero_bus_voltage_latches_undervoltage_with_zero_threshold);
     voloop_run_test(&ctx, "fault clears without restart",
                     test_fault_can_be_cleared_without_restarting_output);
     voloop_run_test(&ctx, "voltage controller lifecycle",
