@@ -24,12 +24,12 @@ static NCO_InitTypeDef make_nco_init(float initialRad) {
     return init;
 }
 
-static PID_InitTypeDef make_pid_init(void) {
+static PID_InitTypeDef make_pid_init(float gain, float zero) {
     PID_InitTypeDef init = {
         .mode = PID_OneZero,
         .init.OneZero = {
-            .gain = 0.001f,
-            .zero = 20.0f,
+            .gain = gain,
+            .zero = zero,
             .triggerFrequency = 1000U,
         },
     };
@@ -58,22 +58,36 @@ static ThreePhOffInv_InputTypeDef make_input_at_phase(float busVoltage,
     ThreePhOffInv_InputTypeDef input = {
         .BusVoltage = busVoltage,
         .LineVoltageAB = phaseVoltageA - phaseVoltageB,
-        .LineVoltageAC = phaseVoltageA - phaseVoltageC,
+        .LineVoltageBC = phaseVoltageB - phaseVoltageC,
     };
     return input;
 }
 
-static void init_running(VoloopTestContext* ctx, ThreePhOffInv_HandleTypeDef* handle,
-                         float initialRad, float targetLineVoltagePeak) {
+static void set_phase_current_at_phase(ThreePhOffInv_InputTypeDef* input,
+                                       float phaseCurrentPeak,
+                                       int32_t phaseAQ31) {
+    int32_t phaseCQ31 = (int32_t)((uint32_t)phaseAQ31 + TEST_PHASE_120_Q31);
+    input->PhaseCurrentA = phaseCurrentPeak * VOLOOP_DEF_SIN(phaseAQ31);
+    input->PhaseCurrentC = phaseCurrentPeak * VOLOOP_DEF_SIN(phaseCQ31);
+}
+
+static void init_running_with_gains(VoloopTestContext* ctx,
+                                    ThreePhOffInv_HandleTypeDef* handle,
+                                    float initialRad, float targetLineVoltagePeak,
+                                    float voltageGain, float currentGain) {
     NCO_InitTypeDef ncoInit = make_nco_init(initialRad);
-    PID_InitTypeDef voltageDInit = make_pid_init();
-    PID_InitTypeDef voltageQInit = make_pid_init();
+    PID_InitTypeDef voltageDInit = make_pid_init(voltageGain, 20.0f);
+    PID_InitTypeDef voltageQInit = make_pid_init(voltageGain, 20.0f);
+    PID_InitTypeDef currentDInit = make_pid_init(currentGain, 400.0f);
+    PID_InitTypeDef currentQInit = make_pid_init(currentGain, 400.0f);
     ThreePhOffInv_ConfigTypeDef config = make_config();
     ThreePhOffInv_InitTypeDef init = {
         .NCOInit = &ncoInit,
         .Config = &config,
         .VoltageDControllerInit = &voltageDInit,
         .VoltageQControllerInit = &voltageQInit,
+        .CurrentDControllerInit = &currentDInit,
+        .CurrentQControllerInit = &currentQInit,
     };
 
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Init(handle, &init));
@@ -81,6 +95,12 @@ static void init_running(VoloopTestContext* ctx, ThreePhOffInv_HandleTypeDef* ha
         ctx, VOLOOP_OK,
         VOLOOP_3phOffInv_SetLineVoltagePeak(handle, targetLineVoltagePeak));
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Start(handle));
+}
+
+static void init_running(VoloopTestContext* ctx, ThreePhOffInv_HandleTypeDef* handle,
+                         float initialRad, float targetLineVoltagePeak) {
+    init_running_with_gains(ctx, handle, initialRad, targetLineVoltagePeak,
+                            0.001f, 0.05f);
 }
 
 static void expect_output_enabled(VoloopTestContext* ctx,
@@ -100,12 +120,12 @@ static void expect_duties_in_range(VoloopTestContext* ctx,
 static void expect_line_duties_match_input(VoloopTestContext* ctx,
                                            const ThreePhOffInv_InputTypeDef* input,
                                            const ThreePhOffInv_OutputTypeDef* output) {
-    float lineVoltageBC = input->LineVoltageAC - input->LineVoltageAB;
+    float lineVoltageAC = input->LineVoltageAB + input->LineVoltageBC;
     TEST_EXPECT_FLOAT_NEAR(ctx, input->LineVoltageAB / input->BusVoltage,
                            output->PhaseADuty - output->PhaseBDuty);
-    TEST_EXPECT_FLOAT_NEAR(ctx, lineVoltageBC / input->BusVoltage,
+    TEST_EXPECT_FLOAT_NEAR(ctx, input->LineVoltageBC / input->BusVoltage,
                            output->PhaseBDuty - output->PhaseCDuty);
-    TEST_EXPECT_FLOAT_NEAR(ctx, -input->LineVoltageAC / input->BusVoltage,
+    TEST_EXPECT_FLOAT_NEAR(ctx, -lineVoltageAC / input->BusVoltage,
                            output->PhaseCDuty - output->PhaseADuty);
 }
 
@@ -125,6 +145,8 @@ static void test_zero_target_generates_neutral_duties(VoloopTestContext* ctx) {
     TEST_EXPECT_FLOAT_NEAR(ctx, 0.5f, output.PhaseCDuty);
     TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageDController.PreviousError);
     TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.VoltageQController.PreviousError);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.CurrentDController.PreviousError);
+    TEST_EXPECT_FLOAT_NEAR(ctx, 0.0f, handle.CurrentQController.PreviousError);
     TEST_EXPECT_STATE_EQ(ctx, 0, VOLOOP_3phOffInv_GetPhaseQ31(&handle));
     VOLOOP_EXPECT_TRUE(ctx, VOLOOP_NCO_GetPhaseQ31(&handle.NCO) != 0);
 }
@@ -146,6 +168,10 @@ static void test_balanced_measurement_matches_d_axis_reference(VoloopTestContext
         ctx, 0.0f, handle.VoltageDController.PreviousError, 1.0e-3f);
     VOLOOP_EXPECT_FLOAT_NEAR(
         ctx, 0.0f, handle.VoltageQController.PreviousError, 1.0e-3f);
+    VOLOOP_EXPECT_FLOAT_NEAR(
+        ctx, 0.0f, handle.CurrentDController.PreviousError, 1.0e-3f);
+    VOLOOP_EXPECT_FLOAT_NEAR(
+        ctx, 0.0f, handle.CurrentQController.PreviousError, 1.0e-3f);
     expect_line_duties_match_input(ctx, &input, &output);
 }
 
@@ -167,7 +193,8 @@ static void test_minmax_common_mode_preserves_line_commands(VoloopTestContext* c
     }
 }
 
-static void test_d_and_q_feedback_polarity(VoloopTestContext* ctx) {
+static void test_voltage_outer_loop_and_current_inner_loop_polarity(
+    VoloopTestContext* ctx) {
     ThreePhOffInv_HandleTypeDef dHandle = { 0 };
     ThreePhOffInv_InputTypeDef zeroInput = {
         .BusVoltage = 400.0f,
@@ -178,15 +205,15 @@ static void test_d_and_q_feedback_polarity(VoloopTestContext* ctx) {
     TEST_REQUIRE_STATUS_EQ(
         ctx, VOLOOP_OK,
         VOLOOP_3phOffInv_Sync(&dHandle, &zeroInput, &dOutput));
-    VOLOOP_EXPECT_TRUE(
-        ctx, (dOutput.PhaseCDuty - dOutput.PhaseBDuty) > 0.5f);
     VOLOOP_EXPECT_TRUE(ctx, dHandle.VoltageDController.PreviousError > 0.0f);
+    VOLOOP_EXPECT_TRUE(ctx, dHandle.CurrentDController.PreviousError > 0.0f);
+    VOLOOP_EXPECT_TRUE(ctx, dOutput.PhaseCDuty > dOutput.PhaseBDuty);
 
     ThreePhOffInv_HandleTypeDef qHandle = { 0 };
     ThreePhOffInv_InputTypeDef positiveQInput = {
         .BusVoltage = 400.0f,
         .LineVoltageAB = 150.0f,
-        .LineVoltageAC = 150.0f,
+        .LineVoltageBC = 0.0f,
     };
     ThreePhOffInv_OutputTypeDef qOutput = { 0 };
 
@@ -194,9 +221,46 @@ static void test_d_and_q_feedback_polarity(VoloopTestContext* ctx) {
     TEST_REQUIRE_STATUS_EQ(
         ctx, VOLOOP_OK,
         VOLOOP_3phOffInv_Sync(&qHandle, &positiveQInput, &qOutput));
-    VOLOOP_EXPECT_TRUE(ctx, qOutput.PhaseADuty < qOutput.PhaseBDuty);
     TEST_EXPECT_FLOAT_NEAR(ctx, qOutput.PhaseBDuty, qOutput.PhaseCDuty);
     VOLOOP_EXPECT_TRUE(ctx, qHandle.VoltageQController.PreviousError < 0.0f);
+    VOLOOP_EXPECT_TRUE(ctx, qHandle.CurrentQController.PreviousError < 0.0f);
+}
+
+static void test_ia_ic_reconstruction_and_current_dq_polarity(
+    VoloopTestContext* ctx) {
+    ThreePhOffInv_HandleTypeDef dHandle = { 0 };
+    ThreePhOffInv_InputTypeDef dInput = {
+        .BusVoltage = 400.0f,
+    };
+    ThreePhOffInv_OutputTypeDef dOutput = { 0 };
+
+    init_running(ctx, &dHandle, 0.0f, 0.0f);
+    set_phase_current_at_phase(
+        &dInput, 5.0f, VOLOOP_3phOffInv_GetPhaseQ31(&dHandle));
+    TEST_REQUIRE_STATUS_EQ(
+        ctx, VOLOOP_OK,
+        VOLOOP_3phOffInv_Sync(&dHandle, &dInput, &dOutput));
+    VOLOOP_EXPECT_FLOAT_NEAR(
+        ctx, -5.0f, dHandle.CurrentDController.PreviousError, 1.0e-3f);
+    VOLOOP_EXPECT_FLOAT_NEAR(
+        ctx, 0.0f, dHandle.CurrentQController.PreviousError, 1.0e-3f);
+
+    ThreePhOffInv_HandleTypeDef qHandle = { 0 };
+    ThreePhOffInv_InputTypeDef qInput = {
+        .BusVoltage = 400.0f,
+        .PhaseCurrentA = 5.0f,
+        .PhaseCurrentC = -2.5f,
+    };
+    ThreePhOffInv_OutputTypeDef qOutput = { 0 };
+
+    init_running(ctx, &qHandle, 0.0f, 0.0f);
+    TEST_REQUIRE_STATUS_EQ(
+        ctx, VOLOOP_OK,
+        VOLOOP_3phOffInv_Sync(&qHandle, &qInput, &qOutput));
+    VOLOOP_EXPECT_FLOAT_NEAR(
+        ctx, 0.0f, qHandle.CurrentDController.PreviousError, 1.0e-3f);
+    VOLOOP_EXPECT_FLOAT_NEAR(
+        ctx, -5.0f, qHandle.CurrentQController.PreviousError, 1.0e-3f);
 }
 
 static void test_d_axis_priority_limits_q_and_duties(VoloopTestContext* ctx) {
@@ -204,11 +268,11 @@ static void test_d_axis_priority_limits_q_and_duties(VoloopTestContext* ctx) {
     ThreePhOffInv_InputTypeDef input = {
         .BusVoltage = 400.0f,
         .LineVoltageAB = 150.0f,
-        .LineVoltageAC = 150.0f,
+        .LineVoltageBC = 0.0f,
     };
     ThreePhOffInv_OutputTypeDef output = { 0 };
 
-    init_running(ctx, &handle, 0.0f, 500.0f);
+    init_running_with_gains(ctx, &handle, 0.0f, 500.0f, 1.0f, 1.0f);
     TEST_REQUIRE_STATUS_EQ(ctx, VOLOOP_OK, VOLOOP_3phOffInv_Sync(&handle, &input, &output));
 
     expect_duties_in_range(ctx, &output);
@@ -217,6 +281,7 @@ static void test_d_axis_priority_limits_q_and_duties(VoloopTestContext* ctx) {
     TEST_EXPECT_FLOAT_NEAR(ctx, 1.0f, output.PhaseCDuty);
     TEST_EXPECT_STATE_EQ(ctx, PID_UpperSaturated, handle.VoltageDController.State);
     TEST_EXPECT_STATE_EQ(ctx, PID_LowerSaturated, handle.VoltageQController.State);
+    TEST_EXPECT_STATE_EQ(ctx, PID_UpperSaturated, handle.CurrentDController.State);
 }
 
 static void test_frequency_update_and_restart_phase_contract(VoloopTestContext* ctx) {
@@ -245,9 +310,9 @@ static void test_threshold_equality_remains_operational(VoloopTestContext* ctx) 
     ThreePhOffInv_InputTypeDef input = {
         .BusVoltage = 450.0f,
         .LineVoltageAB = 500.0f,
-        .LineVoltageAC = 0.0f,
+        .LineVoltageBC = 0.0f,
         .PhaseCurrentA = 20.0f,
-        .PhaseCurrentB = -20.0f,
+        .PhaseCurrentC = -20.0f,
     };
     ThreePhOffInv_OutputTypeDef output = { 0 };
 
@@ -268,8 +333,10 @@ int main(void) {
                     test_balanced_measurement_matches_d_axis_reference);
     voloop_run_test(&ctx, "min-max common mode preserves line commands",
                     test_minmax_common_mode_preserves_line_commands);
-    voloop_run_test(&ctx, "d/q feedback polarity",
-                    test_d_and_q_feedback_polarity);
+    voloop_run_test(&ctx, "voltage/current loop polarity",
+                    test_voltage_outer_loop_and_current_inner_loop_polarity);
+    voloop_run_test(&ctx, "Ia/Ic reconstruction and current d/q polarity",
+                    test_ia_ic_reconstruction_and_current_dq_polarity);
     voloop_run_test(&ctx, "d-axis priority limits q and duties",
                     test_d_axis_priority_limits_q_and_duties);
     voloop_run_test(&ctx, "frequency update and restart phase",

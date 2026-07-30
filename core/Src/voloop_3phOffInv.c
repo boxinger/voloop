@@ -2,10 +2,6 @@
 
 #include <math.h>
 
-#define THREEPHOFFINV_OPEN_LOOP_MODULATION 0.50f
-#define THREEPHOFFINV_THIRD_HARMONIC_RATIO (1.0f / 6.0f)
-#define THREEPHOFFINV_PHASE_120_Q31 0x55555555U
-
 static int VOLOOP_3phOffInv_IsFiniteFloat(float value) {
     return isfinite(value);
 }
@@ -42,14 +38,18 @@ static void VOLOOP_3phOffInv_DisableOutput(ThreePhOffInv_OutputTypeDef* output) 
     output->PhaseCDuty = 0.0f;
 }
 
-static void VOLOOP_3phOffInv_ResetVoltageControllers(ThreePhOffInv_HandleTypeDef* handle) {
+static void VOLOOP_3phOffInv_ResetControllers(ThreePhOffInv_HandleTypeDef* handle) {
     (void)VOLOOP_PID_Reset(&(handle->VoltageDController));
     (void)VOLOOP_PID_Reset(&(handle->VoltageQController));
+    (void)VOLOOP_PID_Reset(&(handle->CurrentDController));
+    (void)VOLOOP_PID_Reset(&(handle->CurrentQController));
 }
 
-static void VOLOOP_3phOffInv_DeInitVoltageControllers(ThreePhOffInv_HandleTypeDef* handle) {
+static void VOLOOP_3phOffInv_DeInitControllers(ThreePhOffInv_HandleTypeDef* handle) {
     (void)VOLOOP_PID_DeInit(&(handle->VoltageDController));
     (void)VOLOOP_PID_DeInit(&(handle->VoltageQController));
+    (void)VOLOOP_PID_DeInit(&(handle->CurrentDController));
+    (void)VOLOOP_PID_DeInit(&(handle->CurrentQController));
 }
 
 static void VOLOOP_3phOffInv_EnterFault(ThreePhOffInv_HandleTypeDef* handle,
@@ -66,7 +66,7 @@ static void VOLOOP_3phOffInv_EnterFault(ThreePhOffInv_HandleTypeDef* handle,
 }
 
 static void VOLOOP_3phOffInv_ClearHandle(ThreePhOffInv_HandleTypeDef* handle) {
-    VOLOOP_3phOffInv_DeInitVoltageControllers(handle);
+    VOLOOP_3phOffInv_DeInitControllers(handle);
     (void)VOLOOP_NCO_DeInit(&(handle->NCO));
     *handle = (ThreePhOffInv_HandleTypeDef){ 0 };
 }
@@ -78,7 +78,9 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Init(ThreePhOffInv_HandleTypeDef* handle,
     }
     if (!VOLOOP_3phOffInv_IsConfigValid(init->Config) ||
         init->VoltageDControllerInit == NULL ||
-        init->VoltageQControllerInit == NULL) {
+        init->VoltageQControllerInit == NULL ||
+        init->CurrentDControllerInit == NULL ||
+        init->CurrentQControllerInit == NULL) {
         return VOLOOP_INVALID_PARAM;
     }
 
@@ -95,6 +97,18 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Init(ThreePhOffInv_HandleTypeDef* handle,
     }
 
     status = VOLOOP_PID_Init(&(handle->VoltageQController), init->VoltageQControllerInit);
+    if (status != VOLOOP_OK) {
+        VOLOOP_3phOffInv_ClearHandle(handle);
+        return status;
+    }
+
+    status = VOLOOP_PID_Init(&(handle->CurrentDController), init->CurrentDControllerInit);
+    if (status != VOLOOP_OK) {
+        VOLOOP_3phOffInv_ClearHandle(handle);
+        return status;
+    }
+
+    status = VOLOOP_PID_Init(&(handle->CurrentQController), init->CurrentQControllerInit);
     if (status != VOLOOP_OK) {
         VOLOOP_3phOffInv_ClearHandle(handle);
         return status;
@@ -133,7 +147,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Start(ThreePhOffInv_HandleTypeDef* handle)
         return VOLOOP_INVALID_STATE;
     }
 
-    VOLOOP_3phOffInv_ResetVoltageControllers(handle);
+    VOLOOP_3phOffInv_ResetControllers(handle);
 
     VOLOOP_StatusTypeDef status = VOLOOP_NCO_SetRad(&(handle->NCO), handle->InitialPhaseRad);
     if (status != VOLOOP_OK) {
@@ -157,7 +171,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Stop(ThreePhOffInv_HandleTypeDef* handle) 
         return VOLOOP_INVALID_PARAM;
     }
     if (handle->State == THREEPHOFFINV_DISABLED) {
-        VOLOOP_3phOffInv_ResetVoltageControllers(handle);
+        VOLOOP_3phOffInv_ResetControllers(handle);
         return VOLOOP_OK;
     }
     if (handle->State != THREEPHOFFINV_RUNNING) {
@@ -170,7 +184,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Stop(ThreePhOffInv_HandleTypeDef* handle) 
         return status;
     }
 
-    VOLOOP_3phOffInv_ResetVoltageControllers(handle);
+    VOLOOP_3phOffInv_ResetControllers(handle);
     handle->State = THREEPHOFFINV_DISABLED;
     return VOLOOP_OK;
 }
@@ -195,7 +209,7 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_ClearFaultCode(ThreePhOffInv_HandleTypeDef
         return status;
     }
 
-    VOLOOP_3phOffInv_ResetVoltageControllers(handle);
+    VOLOOP_3phOffInv_ResetControllers(handle);
     handle->FaultCode = THREEPHOFFINV_FAULT_NONE;
     handle->State = THREEPHOFFINV_DISABLED;
     return VOLOOP_OK;
@@ -291,28 +305,28 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Sync(ThreePhOffInv_HandleTypeDef* handle,
         return VOLOOP_INVALID_STATE;
     }
 
-    float lineVoltageBC = input->LineVoltageAC - input->LineVoltageAB;
-    float phaseCurrentC = -(input->PhaseCurrentA + input->PhaseCurrentB);
+    float lineVoltageAC = input->LineVoltageAB + input->LineVoltageBC;
+    float phaseCurrentB = -(input->PhaseCurrentA + input->PhaseCurrentC);
     if (!VOLOOP_3phOffInv_IsFiniteFloat(input->BusVoltage) ||
         !VOLOOP_3phOffInv_IsFiniteFloat(input->LineVoltageAB) ||
-        !VOLOOP_3phOffInv_IsFiniteFloat(input->LineVoltageAC) ||
+        !VOLOOP_3phOffInv_IsFiniteFloat(input->LineVoltageBC) ||
         !VOLOOP_3phOffInv_IsFiniteFloat(input->PhaseCurrentA) ||
-        !VOLOOP_3phOffInv_IsFiniteFloat(input->PhaseCurrentB) ||
-        !VOLOOP_3phOffInv_IsFiniteFloat(lineVoltageBC) ||
-        !VOLOOP_3phOffInv_IsFiniteFloat(phaseCurrentC)) {
+        !VOLOOP_3phOffInv_IsFiniteFloat(input->PhaseCurrentC) ||
+        !VOLOOP_3phOffInv_IsFiniteFloat(lineVoltageAC) ||
+        !VOLOOP_3phOffInv_IsFiniteFloat(phaseCurrentB)) {
         VOLOOP_3phOffInv_EnterFault(handle, THREEPHOFFINV_FAULT_INVALID_SAMPLE);
         return VOLOOP_ERROR;
     }
 
     if (fabsf(input->LineVoltageAB) > handle->Config.LineOverVoltageThreshold ||
-        fabsf(input->LineVoltageAC) > handle->Config.LineOverVoltageThreshold ||
-        fabsf(lineVoltageBC) > handle->Config.LineOverVoltageThreshold) {
+        fabsf(input->LineVoltageBC) > handle->Config.LineOverVoltageThreshold ||
+        fabsf(lineVoltageAC) > handle->Config.LineOverVoltageThreshold) {
         VOLOOP_3phOffInv_EnterFault(handle, THREEPHOFFINV_FAULT_LINE_OVERVOLTAGE);
         return VOLOOP_ERROR;
     }
     if (fabsf(input->PhaseCurrentA) > handle->Config.PhaseOverCurrentThreshold ||
-        fabsf(input->PhaseCurrentB) > handle->Config.PhaseOverCurrentThreshold ||
-        fabsf(phaseCurrentC) > handle->Config.PhaseOverCurrentThreshold) {
+        fabsf(input->PhaseCurrentC) > handle->Config.PhaseOverCurrentThreshold ||
+        fabsf(phaseCurrentB) > handle->Config.PhaseOverCurrentThreshold) {
         VOLOOP_3phOffInv_EnterFault(handle, THREEPHOFFINV_FAULT_PHASE_OVERCURRENT);
         return VOLOOP_ERROR;
     }
@@ -338,10 +352,10 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Sync(ThreePhOffInv_HandleTypeDef* handle,
     const int32_t quarterCycleQ31 = (int32_t)0x40000000U;
 
     VOLOOP_DEF_AbcTypeDef measuredPhaseVoltage = {
-        .a = (input->LineVoltageAB + input->LineVoltageAC) * (1.0f / 3.0f),
+        .a = (input->LineVoltageAB + lineVoltageAC) * (1.0f / 3.0f),
     };
     measuredPhaseVoltage.b = measuredPhaseVoltage.a - input->LineVoltageAB;
-    measuredPhaseVoltage.c = measuredPhaseVoltage.a - input->LineVoltageAC;
+    measuredPhaseVoltage.c = measuredPhaseVoltage.b - input->LineVoltageBC;
 
     VOLOOP_DEF_AlphaBetaZeroTypeDef measuredAlphaBetaVoltage = { 0 };
     VOLOOP_DEF_ClarkeTransform(&measuredPhaseVoltage, &measuredAlphaBetaVoltage);
@@ -352,15 +366,46 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Sync(ThreePhOffInv_HandleTypeDef* handle,
     VOLOOP_DEF_ParkTransform(&measuredAlphaBetaVoltage, parkPhaseQ31,
                              &measuredDqVoltage);
 
+    VOLOOP_DEF_AbcTypeDef measuredPhaseCurrent = {
+        .a = input->PhaseCurrentA,
+        .b = phaseCurrentB,
+        .c = input->PhaseCurrentC,
+    };
+    VOLOOP_DEF_AlphaBetaZeroTypeDef measuredAlphaBetaCurrent = { 0 };
+    VOLOOP_DEF_ClarkeTransform(&measuredPhaseCurrent, &measuredAlphaBetaCurrent);
+
+    VOLOOP_DEF_DqZeroTypeDef measuredDqCurrent = { 0 };
+    VOLOOP_DEF_ParkTransform(&measuredAlphaBetaCurrent, parkPhaseQ31,
+                             &measuredDqCurrent);
+
     float dVoltageReference = handle->TargetLineVoltagePeak * oneOverSqrt3;
-    float dVoltageFeedforward =
-        (2.0f * dVoltageReference) / input->BusVoltage;
-    float dCorrection = VOLOOP_PID_ComputeConditional(
+    float currentReferenceMax = handle->Config.PhaseOverCurrentThreshold;
+    float dCurrentReference = VOLOOP_PID_ComputeConditional(
         &(handle->VoltageDController), dVoltageReference, measuredDqVoltage.d,
-        -modulationMax - dVoltageFeedforward,
-        modulationMax - dVoltageFeedforward);
+        -currentReferenceMax, currentReferenceMax);
+
+    float qCurrentHeadroomSquared =
+        (currentReferenceMax * currentReferenceMax) -
+        (dCurrentReference * dCurrentReference);
+    if (qCurrentHeadroomSquared < 0.0f) {
+        qCurrentHeadroomSquared = 0.0f;
+    }
+    float qCurrentHeadroom = sqrtf(qCurrentHeadroomSquared);
+    float qCurrentReference = VOLOOP_PID_ComputeConditional(
+        &(handle->VoltageQController), 0.0f, measuredDqVoltage.q,
+        -qCurrentHeadroom, qCurrentHeadroom);
+
+    float dModulationFeedforward =
+        (2.0f * measuredDqVoltage.d) / input->BusVoltage;
+    float qModulationFeedforward =
+        (2.0f * measuredDqVoltage.q) / input->BusVoltage;
+    float dCurrentCorrection = VOLOOP_PID_ComputeConditional(
+        &(handle->CurrentDController), dCurrentReference, measuredDqCurrent.d,
+        -modulationMax - dModulationFeedforward,
+        modulationMax - dModulationFeedforward);
     float dModulation = VOLOOP_DEF_ClampFloat(
-        dVoltageFeedforward + dCorrection, -modulationMax, modulationMax);
+        dModulationFeedforward + dCurrentCorrection,
+        -modulationMax, modulationMax);
 
     float qModulationHeadroomSquared =
         (modulationMax * modulationMax) - (dModulation * dModulation);
@@ -368,8 +413,12 @@ VOLOOP_StatusTypeDef VOLOOP_3phOffInv_Sync(ThreePhOffInv_HandleTypeDef* handle,
         qModulationHeadroomSquared = 0.0f;
     }
     float qModulationHeadroom = sqrtf(qModulationHeadroomSquared);
-    float qModulation = VOLOOP_PID_ComputeConditional(
-        &(handle->VoltageQController), 0.0f, measuredDqVoltage.q,
+    float qCurrentCorrection = VOLOOP_PID_ComputeConditional(
+        &(handle->CurrentQController), qCurrentReference, measuredDqCurrent.q,
+        -qModulationHeadroom - qModulationFeedforward,
+        qModulationHeadroom - qModulationFeedforward);
+    float qModulation = VOLOOP_DEF_ClampFloat(
+        qModulationFeedforward + qCurrentCorrection,
         -qModulationHeadroom, qModulationHeadroom);
 
     VOLOOP_DEF_DqZeroTypeDef modulationDq = {
